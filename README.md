@@ -1,27 +1,43 @@
-# PRAHARI
+# PRAHARI: Predictive Intelligence Engine for Cyber-Fraud Cash-Out Interception
 
-**Predictive Intelligence Engine for Cyber-Fraud Cash-Out Interception**
+## Abstract
 
-> **Smart India Hackathon 2026** | **Problem Statement ID:** 26184
+PRAHARI is a continuous-time, graph-based predictive analytics pipeline developed for the Smart India Hackathon 2026 (Problem Statement ID: 26184). The system is engineered to solve a critical operational gap in financial cybercrime response: the "Golden Hour" deficit. When a cyber-fraud incident is reported, stolen funds are rapidly routed across multiple intermediary (mule) accounts, often crossing bank boundaries, before being withdrawn as physical cash from an ATM, micro-ATM, or Point of Sale (POS) terminal. 
 
-PRAHARI is a continuous-time, graph-based predictive analytics pipeline that converts a cyber-fraud complaint into a live, explainable prediction of *which money-mule path is active, where the cash-out is likely to happen, and when intervention is most valuable*.
+Current mitigation systems are reactive and rely heavily on post-transaction analysis and static blocklists. PRAHARI transitions this workflow from post-withdrawal investigation to pre-withdrawal prevention. By ingesting real-time transaction streams and constructing a temporal multi-hop graph, the system forecasts the probable spatial location (using H3 indexing) and precise time window of an impending cash withdrawal, allowing law enforcement and banking institutions to intervene proactively.
 
-## 🚨 The Golden Hour Deficit
-Fraudsters route stolen funds rapidly across multiple layers of mule accounts and banks before withdrawing it as physical cash. Current response systems are reactive, identifying accounts after transactions settle. PRAHARI aims to shift this to **pre-withdrawal prevention** by forecasting the next cash-out location in real-time.
+## System Overview
 
-## 🔑 Key Features
-- **Dynamic Ingestion:** Ingest NCRP complaints and transaction streams in real-time.
-- **Topological Mapping:** Build a multi-hop temporal graph connecting accounts, VPAs, devices, and terminals.
-- **Mule Identification:** Self-supervised detection of newly activated mule accounts using GCPAL-inspired modeling.
-- **Spatial-temporal Projection:** Continuous-time forecasting of cash-out likelihood using Group Attention Neural Hawkes Processes (GAttNHP).
-- **Automated Mitigation:** Generates H3 spatial cell alerts, time-to-withdrawal intervals, and risk-tiered actionable alerts.
-- **Privacy-Preserving:** Federated learning design allowing banks to collaborate on fraud detection without centralizing raw ledgers.
+PRAHARI operates as an automated decision-support layer integrating several advanced research methodologies:
+1.  **Dynamic Graph Construction:** Real-time ingestion of incident complaints and banking transaction streams to build a heterogeneous, time-aware graph of accounts, devices, and payment terminals.
+2.  **Self-Supervised Mule Detection:** Utilization of Graph Contrastive Pre-training (GCPAL-inspired) to identify anomalous structural and temporal behaviors, effectively surfacing previously unknown money-mule accounts.
+3.  **Continuous-Time Forecasting:** Deployment of Group Attention Neural Hawkes Processes (GAttNHP) with Non-Crossing Quantile (NCQ) regression to estimate the changing intensity of cash-out likelihood over specific geographical areas.
+4.  **Actionable Intelligence Delivery:** Generation of precise alerts containing forecasted H3 spatial cells, probability distributions for time-to-withdrawal, and explainable risk scores for human-in-the-loop review.
 
-## 🏗️ Repository Structure
-- `/docs`: Contains detailed project briefs, architectural designs, and AI context instructions.
-- `/src`: Minimal codebase structure for the backend and frontend components.
+## Repository Structure
 
-## 🚀 Getting Started
-(Detailed setup instructions for the backend and frontend to be added as development progresses.)
+The repository is modularized to ensure separation of concerns across ingestion, intelligence, and presentation layers:
 
-Please check out [`architecture.md`](architecture.md) for an in-depth system design overview, and [`claude.md`](claude.md) for AI-assisted development instructions.
+*   `/docs`: Contains detailed project briefs, architectural blueprints, and AI context instructions.
+*   `/frontend`: React-based GIS command dashboard utilizing Deck.gl and Mapbox GL for spatial rendering and alert management.
+*   `/gateway`: Node.js/Express service acting as the primary entry point for webhooks, authentication, WebSocket event distribution, and alert routing.
+*   `/ml-service`: Python/FastAPI service hosting the PyTorch-based inference endpoints for graph construction, mule detection, and spatial-temporal forecasting.
+*   `/stream-simulator`: Synthetic event producer designed to generate and replay mock NCRP complaints and transaction graphs for testing and evaluation purposes.
+
+## Getting Started
+
+### Prerequisites
+*   Docker and Docker Compose
+*   Node.js (v18 or higher)
+*   Python (3.10 or higher)
+*   Apache Kafka / Redis (managed via Docker Compose)
+*   PostgreSQL (with PostGIS extension)
+
+### Initialization (Development)
+Detailed setup instructions for each service module will be maintained within their respective subdirectories. A unified Docker Compose configuration will be provided to orchestrate the local development environment seamlessly.
+
+## Evaluation and Accountability
+
+PRAHARI is strictly designed as a decision-support system. It does not execute autonomous, irreversible financial holds. All high-risk alerts generated by the system include a comprehensive evidence package (e.g., node risk scores, spatial confidence intervals) to facilitate rapid, accountable authorization by human analysts.
+
+For a detailed breakdown of the system design, data flows, and infrastructure topology, please refer to `architecture.md`.

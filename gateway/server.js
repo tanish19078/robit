@@ -1,6 +1,7 @@
 // PRAHARI gateway v0.1 — Express, in-memory store, SSE live feed.
 // Run: npm install && node server.js   (needs ml-service on ML_URL, default :8000)
 import express from "express";
+import { readFile } from "node:fs/promises";
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -135,6 +136,13 @@ app.post("/api/actions/simulate", (req, res) => {
     model_version: a.model_version, ts: new Date().toISOString() };
   db.audit.push(row);
   return res.json(row);
+});
+
+app.get("/api/terminals", async (_req, res) => {
+  try {
+    const raw = await readFile(new URL("../../data/terminals.json", import.meta.url), "utf8");
+    res.json({ terminals: JSON.parse(raw) });
+  } catch { res.json({ terminals: [] }); }
 });
 
 app.get("/api/metrics", (_req, res) => {

@@ -2,6 +2,8 @@
 // Run: npm install && node server.js   (needs ml-service on ML_URL, default :8000)
 import express from "express";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -153,6 +155,10 @@ app.get("/api/metrics", (_req, res) => {
     alerts_by_tier: byTier,
     last_forecast: last ? { tier: last.risk_tier, top_cell: last.probable_cashout_cells[0], window: last.cashout_window_minutes } : null });
 });
+
+// dashboard served same-origin (no CORS issues, no extra server)
+const FRONTEND_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "frontend");
+app.use(express.static(FRONTEND_DIR));
 
 // SSE live feed (WSS upgrade lands with compose; SSE keeps v0.1 dependency-free)
 app.get("/api/stream/:id", (req, res) => {

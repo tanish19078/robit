@@ -140,7 +140,7 @@ app.post("/api/actions/simulate", (req, res) => {
 
 app.get("/api/terminals", async (_req, res) => {
   try {
-    const raw = await readFile(new URL("../../data/terminals.json", import.meta.url), "utf8");
+    const raw = await readFile(new URL("../data/terminals.json", import.meta.url), "utf8");
     res.json({ terminals: JSON.parse(raw) });
   } catch { res.json({ terminals: [] }); }
 });

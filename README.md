@@ -1,43 +1,40 @@
-# PRAHARI: Predictive Intelligence Engine for Cyber-Fraud Cash-Out Interception
+# PRAHARI — SIH 2026 PS 26184 (prototype in `robit/`)
 
-## Abstract
+Complaint in → money path + ranked H3 cash-out cells + time window + evidence → human-reviewed simulated action.
+Spec: `architecture.md` (build this) · context: `docs/PRAHARI_Final.md` · agent rules: `claude.md`.
 
-PRAHARI is a continuous-time, graph-based predictive analytics pipeline developed for the Smart India Hackathon 2026 (Problem Statement ID: 26184). The system is engineered to solve a critical operational gap in financial cybercrime response: the "Golden Hour" deficit. When a cyber-fraud incident is reported, stolen funds are rapidly routed across multiple intermediary (mule) accounts, often crossing bank boundaries, before being withdrawn as physical cash from an ATM, micro-ATM, or Point of Sale (POS) terminal. 
+## Run it (5 min)
 
-Current mitigation systems are reactive and rely heavily on post-transaction analysis and static blocklists. PRAHARI transitions this workflow from post-withdrawal investigation to pre-withdrawal prevention. By ingesting real-time transaction streams and constructing a temporal multi-hop graph, the system forecasts the probable spatial location (using H3 indexing) and precise time window of an impending cash withdrawal, allowing law enforcement and banking institutions to intervene proactively.
+```bash
+docker compose -f infra/docker-compose.yml up --build   # gateway :3000, ml :8000, redis, postgres, frontend
+python stream-simulator/replay.py --scenario demo_golden_hour --speed 20x
+# open frontend → INC-2026-00041 → watch cell risk jump ~10:06 → ack/escalate → check audit id
+curl localhost:3000/api/metrics
+```
 
-## System Overview
+Judge flow: `10:00` complaint → `10:01` L1 → `10:03` L2 split → `10:06` new node near
+4-terminal H3 cluster → Red + `15/27/45 min` window → simulated step-up → blocked/missed logged.
 
-PRAHARI operates as an automated decision-support layer integrating several advanced research methodologies:
-1.  **Dynamic Graph Construction:** Real-time ingestion of incident complaints and banking transaction streams to build a heterogeneous, time-aware graph of accounts, devices, and payment terminals.
-2.  **Self-Supervised Mule Detection:** Utilization of Graph Contrastive Pre-training (GCPAL-inspired) to identify anomalous structural and temporal behaviors, effectively surfacing previously unknown money-mule accounts.
-3.  **Continuous-Time Forecasting:** Deployment of Group Attention Neural Hawkes Processes (GAttNHP) with Non-Crossing Quantile (NCQ) regression to estimate the changing intensity of cash-out likelihood over specific geographical areas.
-4.  **Actionable Intelligence Delivery:** Generation of precise alerts containing forecasted H3 spatial cells, probability distributions for time-to-withdrawal, and explainable risk scores for human-in-the-loop review.
+## Where things live
 
-## Repository Structure
+```text
+gateway/            Express :3000 — intake, validation, tiers, WSS, audit
+ml-service/graph/   k-hop subgraph + path (GraphSAGE/GAT, NetworkX fallback)
+ml-service/mule/    baseline + learned scores + evidence, weights in weights.json
+ml-service/forecast/ Hawkes-lite + XGB + quantiles → decision object
+frontend/           queue → graph + Leaflet heatmap → evidence → review buttons → metrics
+stream-simulator/   replay.py + scenarios (all SIMULATION)
+data/               terminals.json, demo_golden_hour.json (ground truth), normal_day.json
+infra/              docker-compose.yml (add per architecture.md §1)
+docs/               PRAHARI_Final.md + RESULTS.md (paste real /api/metrics here)
+```
 
-The repository is modularized to ensure separation of concerns across ingestion, intelligence, and presentation layers:
+API: `POST /api/incidents` · `POST /api/events/transactions|withdrawals` ·
+`GET /api/incidents/:id/graph|forecast|alerts` ·
+`POST /api/alerts/:id/acknowledge|escalate|dismiss` · `POST /api/actions/simulate` · `GET /api/metrics`.
 
-*   `/docs`: Contains detailed project briefs, architectural blueprints, and AI context instructions.
-*   `/frontend`: React-based GIS command dashboard utilizing Deck.gl and Mapbox GL for spatial rendering and alert management.
-*   `/gateway`: Node.js/Express service acting as the primary entry point for webhooks, authentication, WebSocket event distribution, and alert routing.
-*   `/ml-service`: Python/FastAPI service hosting the PyTorch-based inference endpoints for graph construction, mule detection, and spatial-temporal forecasting.
-*   `/stream-simulator`: Synthetic event producer designed to generate and replay mock NCRP complaints and transaction graphs for testing and evaluation purposes.
+## Rules that keep us out of trouble
 
-## Getting Started
-
-### Prerequisites
-*   Docker and Docker Compose
-*   Node.js (v18 or higher)
-*   Python (3.10 or higher)
-*   Apache Kafka / Redis (managed via Docker Compose)
-*   PostgreSQL (with PostGIS extension)
-
-### Initialization (Development)
-Detailed setup instructions for each service module will be maintained within their respective subdirectories. A unified Docker Compose configuration will be provided to orchestrate the local development environment seamlessly.
-
-## Evaluation and Accountability
-
-PRAHARI is strictly designed as a decision-support system. It does not execute autonomous, irreversible financial holds. All high-risk alerts generated by the system include a comprehensive evidence package (e.g., node risk scores, spatial confidence intervals) to facilitate rapid, accountable authorization by human analysts.
-
-For a detailed breakdown of the system design, data flows, and infrastructure topology, please refer to `architecture.md`.
+Prototype only: hashed IDs, `SIMULATION` tags, human approval required, no live freezes —
+`simulate` + audit row only. Time-ordered features, Postgres-only, Leaflet-only,
+measured numbers only. Stuck >1h on a model? Ship the `architecture.md` §8 fallback and keep the demo moving.

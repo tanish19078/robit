@@ -1,96 +1,123 @@
-# PRAHARI Engineering Architecture
+# PRAHARI — Build Spec (read this first, then code)
 
-This document provides a fine-grained, professional engineering breakdown of the PRAHARI system architecture. The architecture is designed for high-throughput stream processing, complex temporal graph inference, and secure, privacy-preserving multi-institutional collaboration.
+PS 26184. Prototype only. No live bank/LEA rails — everything external is simulated + logged.
+Product context: `docs/PRAHARI_Final.md`. This file is the contract: services, schemas, APIs, tasks.
 
-## 1. System Context Topology
+## 0. What ships in 36h
 
-At the highest level, PRAHARI operates as a secure intermediary layer between national reporting portals (NCRP), core banking systems (CBS), and law enforcement agency (LEA) dispatch systems.
+- [ ] `POST /api/incidents` + event intake → Redis Streams + Postgres
+- [ ] k-hop incident graph + mule scores (baseline always works, embeddings if time)
+- [ ] Cell ranking over H3 res 8 + q10/med/q90 window
+- [ ] Dashboard: incident queue → graph → heatmap → evidence → ack/escalate/dismiss
+- [ ] `POST /api/actions/simulate` + audit row for every decision
+- [ ] `replay.py --scenario demo_golden_hour` drives the 3-min judge demo
+- [ ] `/api/metrics` shows latency, p@K, coverage from the same DB (no hardcoded numbers)
 
-```mermaid
-C4Context
-    title System Context: PRAHARI Predictive Intelligence Engine
-    
-    Person(analyst, "Security Analyst / LEA Officer", "Reviews evidence, approves actions, monitors spatial hotspots.")
-    
-    System_Ext(ncrp, "National Cybercrime Reporting Portal", "Emits initial fraud complaint webhooks.")
-    System_Ext(cbs, "Core Banking Systems / NPCI", "Emits real-time ISO 20022/UPI transaction streams.")
-    System_Ext(lea_cad, "Police CAD Systems", "Receives actionable spatial dispatch alerts.")
-    
-    System(prahari, "PRAHARI System", "Ingests streams, maps temporal graphs, predicts cash-out locations, and orchestrates response.")
-    
-    Rel(ncrp, prahari, "Incident Webhooks", "HTTPS/TLS")
-    Rel(cbs, prahari, "Transaction Streams", "Kafka/HTTPS")
-    Rel(prahari, analyst, "Decision Dashboard", "HTTPS/WSS")
-    Rel(prahari, cbs, "Lien/Step-up Requests", "HTTPS/mTLS")
-    Rel(prahari, lea_cad, "Spatial Dispatch Alerts", "HTTPS")
+Non-goals: Kafka/Flink, graph DB, full HTGT/GAttNHP, HE/SMPC, paid map tokens, gRPC/CAD connectors.
+
+## 1. Services (5 containers, one compose)
+
+```text
+frontend (React+Vite+Leaflet) → gateway (Node/Express :3000) → ml-service (FastAPI :8000)
+                                    ↓                              ↓
+                              postgres:5432                  redis:6379 (streams + hot state)
+stream-simulator (script, not a server): POSTs JSON to gateway
 ```
 
-## 2. Fine-Grained Component Architecture
+`infra/docker-compose.yml` (to add): `gateway, ml-service, redis, postgres, frontend`.
+Health: gateway `/health`, ml `/ml/health`. Gateway never blocks >500ms waiting for ML —
+call ML sync in demo, move to worker only if p95 hurts.
 
-The system is strictly decoupled into ingestion, intelligence, decision, and presentation layers to allow independent scaling of I/O-bound stream processors and compute-bound ML inference engines.
+## 2. Data contract (frozen — do not rename fields)
 
-```mermaid
-C4Container
-    title Container Diagram: Internal Architecture
-
-    Container_Boundary(ingestion, "Streaming & Ingestion Layer") {
-        Container(webhook_api, "Gateway API", "Node.js, Express", "Terminates external TLS, validates payload schemas, authenticates requests.")
-        ContainerQueue(kafka_bus, "Event Bus", "Apache Kafka", "Durable, partitioned event streams (Complaints, Transactions, Withdrawals).")
-        Container(flink_processor, "Stream Processor", "Apache Flink", "Time-window aggregations, deduplication, and feature extraction.")
-    }
-
-    Container_Boundary(ml_layer, "Machine Learning Inference Service (Python/FastAPI)") {
-        Container(graph_engine, "Temporal Graph Engine", "PyTorch Geometric", "Maintains active complaint-linked subgraphs in memory/Redis.")
-        Container(mule_detector, "Mule Detection Module", "GCPAL Model", "Computes contrastive embeddings to rank anomalous nodes.")
-        Container(forecast_engine, "Spatial-Temporal Forecaster", "PyTorch (GAttNHP)", "Estimates Hawkes process intensity and non-crossing quantiles for cash-out.")
-    }
-
-    Container_Boundary(persistence, "State & Persistence Layer") {
-        ContainerDb(redis_cache, "Hot State Cache", "Redis", "Maintains short-lived event state, session data, and active incident clocks.")
-        ContainerDb(postgres_db, "Relational Store", "PostgreSQL + PostGIS", "Stores audit logs, system metadata, terminal registries, and H3 cell data.")
-        ContainerDb(graph_db, "Graph Store", "Memgraph / Neo4j", "Persistent storage of the heterogeneous entity-relationship graph.")
-    }
-    
-    Container_Boundary(presentation, "Presentation & Action Layer") {
-        Container(dashboard, "GIS Command Dashboard", "React, Deck.gl", "Renders H3 heatmaps, temporal graphs, and risk evidence.")
-        Container(decision_router, "Decision Router", "Node.js", "Evaluates threshold rules and dispatches approved actions to external APIs.")
-    }
-
-    Rel(webhook_api, kafka_bus, "Publishes events")
-    Rel(kafka_bus, flink_processor, "Consumes raw events")
-    Rel(flink_processor, graph_engine, "Triggers graph updates")
-    Rel(graph_engine, mule_detector, "Passes subgraph tensors")
-    Rel(mule_detector, forecast_engine, "Passes node embeddings")
-    Rel(forecast_engine, postgres_db, "Writes predictions")
-    Rel(decision_router, dashboard, "Pushes alerts via WSS")
-    Rel(dashboard, decision_router, "Submits analyst decisions")
+```json
+// POST /api/incidents
+{"incident_id":"INC-2026-00041","t0":"2026-01-01T10:00:00Z","amount":50000,"src_hash":"victim_hash","channel":"UPI"}
+// POST /api/events/transactions | withdrawals
+{"event_id":"evt_001","incident_id":"INC-2026-00041","ts":"2026-01-01T10:01:00Z","type":"transfer",
+ "src":"acct_hash_17","dst":"acct_hash_31","amount":48000,"channel":"UPI","bank":"BANK_B",
+ "device_hash":null,"terminal_id":null}
+// withdrawal: {"type":"withdrawal", ..., "terminal_id":"ATM_042"}
 ```
 
-## 3. Machine Learning Subsystem Data Flow
+Rules: `type ∈ transfer|withdrawal|shared_attribute`. All IDs hashed. `ts >= t0` else 400.
+Gateway validates with zod/pydantic, then `XADD incident:{id}:events` + `INSERT events`.
+Postgres min tables: `incidents, events, terminals, predictions, alerts, decisions, audit_log, metrics, model_versions`.
+Redis min keys: `incident:{id}:meta`, `incident:{id}:events` (stream), `incident:{id}:state`.
+Terminals seed (`data/terminals.json`): `{terminal_id, type, lat, lon, h3_r8, bank}`.
 
-The ML service is the core of PRAHARI, operating on a continuous feedback loop:
+## 3. Module build order + owners
 
-1.  **Graph Construction:** Incoming transactions update a heterogeneous graph (Nodes: Accounts, Devices, Terminals; Edges: Transfers, Shared Attributes). Time-stamps are strictly preserved to maintain temporal causality.
-2.  **Structural Pre-training (GCPAL):** To overcome the deficit of labeled data for newly activated mule accounts, the system applies Graph Contrastive Pre-training. It creates structurally and temporally perturbed views of the subgraph, optimizing a contrastive loss function to ensure robust node embeddings.
-3.  **Intensity Estimation (GAttNHP):** The Group Attention Neural Hawkes Process module treats cash withdrawals as a self-exciting point process. A rapid fan-out of funds dynamically spikes the baseline spatial intensity $\mu_k(x)$ across nearby H3 cells.
-4.  **Quantile Regression:** Instead of providing a brittle point-in-time estimate, the model outputs Non-Crossing Quantiles (e.g., $q_{10}, q_{50}, q_{90}$) to define a calibrated time-to-withdrawal probability interval.
+### M1 — Intake + replay [gateway + stream-simulator] — build FIRST
+Owner: backend person. Done when: `replay.py` creates incident + 15 events, all visible via
+`GET /api/incidents/:id/graph` (even if graph = raw edge list at first).
 
-## 4. Spatial Indexing Strategy
+### M2 — Graph [ml-service/graph/] — k-hop only, never full-graph
+- Input: incident window from Redis. Scope: BFS depth 3 from complaint nodes.
+- Edge feats: `[log_amount, dt_since_t0_min, channel_onehot, velocity_5m]`.
+- Default: 2-layer GraphSAGE/GAT (PyG). Output: `{nodes:[{id, score_hint, hop}], edges:[...], path:[victim…frontier]}`.
+- Fallback if PyG breaks: NetworkX + hand feats. Demo must not depend on GPU.
 
-To abstract raw latitude/longitude coordinates into operationally viable dispatch zones, PRAHARI relies on the Uber H3 geospatial indexing system.
-*   **Resolution Selection:** The system maps terminal coordinates to H3 Resolution 8 (avg. edge length ~531m) or Resolution 9 (~201m) cells.
-*   **Aggregation:** Prediction intensities are aggregated at the cell level. This prevents over-alerting on individual ATMs and instead directs law enforcement to high-probability *clusters*.
+### M3 — Mule score [ml-service/mule/] — baseline ships, learned is bonus
+```text
+baseline = w1*fan_out_vel + w2*fan_in_vel + w3*is_new + w4*hop_depth + w5*split_ratio + w6*terminal_conv
+final = sigmoid(a*baseline + b*learned + c)   # learned=0 until contrastive lands
+```
+Return `{baseline, learned, final, evidence[]}` per node. Evidence strings are the demo —
+e.g. `"fan-out 3 in 4 min"`, `"first seen 10:03"`. Tune `w*` on `data/` fixtures, document in `ml-service/mule/weights.json`.
 
-## 5. Security and Privacy Architecture
+### M4 — Where+When [ml-service/forecast/]
+```text
+risk(c,t) = base_prior(c,dow,hour) + Σ w_i·exp(-dist²/2σ²)·exp(-β·(t−t_i)) + xgb(incident_feats)
+```
+- Candidates: H3 res 8 cells within 2 rings of incident terminals (default σ, β in `config.json`, make them flags).
+- `xgb`: binary `P(cashout in c)`. Train on synthetic fixtures; if no time, logistic regression is acceptable — keep the interface.
+- Time: quantile head → `{q10, median, q90}` mins. Enforce `q10 ≤ median ≤ q90` in code (sort + penalty).
+- Tiers: `<0.35 Green` monitor · `0.35–0.65 Amber` task · `>0.65 Red` alert · live withdrawal = `Critical`.
 
-Financial transaction networks span strict regulatory boundaries. PRAHARI incorporates a privacy-first engineering roadmap:
-*   **Pseudonymization:** All account identifiers (PII) are cryptographically hashed (salted) before entering the ML pipeline.
-*   **Federated Learning:** To construct a robust national model without pooling raw bank ledgers, PRAHARI supports a decentralized training paradigm. Institutions train local models and communicate only gradient updates.
-*   **Secure Aggregation & Differential Privacy:** Gradient updates are subjected to L2-norm clipping and Gaussian noise injection before being aggregated by the central coordinator, mitigating membership inference attacks.
-*   **Auditability:** Every system-generated forecast, analyst approval, and automated API dispatch is logged immutably in PostgreSQL to ensure full traceability and accountability.
+Forecast response = decision object (gateway persists + pushes WSS):
+`{incident_id, complaint_clock_min, risk_tier, money_path, probable_cashout_cells[{h3_cell, probability, nearby_cashout_points}], cashout_window_minutes, evidence[], recommended_action, model_version, human_review_required:true}`.
 
-## 6. Latency and Scalability Considerations
+## 4. API checklist (gateway owns, ml mirrors under /ml/*)
 
-*   **Complaint-Linked Subgraphs:** Executing deep graph neural networks across a national-scale transaction graph in real-time is computationally prohibitive. PRAHARI relies on localized graph traversal; the temporal graph is expanded iteratively starting *only* from the nodes linked to the specific NCRP incident webhook.
-*   **Asynchronous Processing:** Inference tasks are decoupled from ingestion via Kafka. The Gateway API will never block waiting for a Hawkes process calculation.
-*   **Read-Optimized Views:** The PostgreSQL database utilizes materialized views and spatial indexes (PostGIS/H3) to ensure sub-second rendering of GIS heatmaps on the React frontend.
+```text
+POST /api/incidents → 201 {incident_id}
+POST /api/events/transactions | /api/events/withdrawals → 202
+GET  /api/incidents/:id/graph        → M2 output
+GET  /api/incidents/:id/forecast     → M4 decision object
+GET  /api/incidents/:id/alerts
+POST /api/alerts/:id/acknowledge|escalate|dismiss {by, reason}
+POST /api/actions/simulate {alert_id, action: step_up|hold_request|patrol_notify} → audit row
+GET  /api/metrics → {p50_ms, p95_ms, precision_k_nodes, precision_k_cells, coverage_10_90, fp_rate}
+```
+
+Every mutating route writes `audit_log`. `model_version` = git sha or `prahari-0.1-dev`.
+
+## 5. Frontend tasks (keep it ugly but working)
+
+Pages: `/` incident queue (clock ticking since t0) → `/:id` graph + heatmap + evidence + tier buttons → `/metrics`.
+Map: Leaflet only, H3 polygon + terminal dots + path polyline. No Deck.gl, no token.
+WSS: `incident:{id}` topic → prepend event, bump risk without refresh.
+Buttons must call ack/escalate/dismiss + simulate, then show audit id. If WSS breaks, poll `/forecast` every 3s — demo continues.
+
+## 6. Simulator + fixtures (judge demo lives here)
+
+`stream-simulator/replay.py --scenario demo_golden_hour --speed 20x`:
+`10:00` complaint → `10:01` L1 → `10:03` L2 split → `10:06` new node near 4-terminal cluster.
+All output tagged `SIMULATION`. Keep `data/demo_golden_hour.json` as the frozen ground truth
+(true path, true cell, true cash-out ts) so `/api/metrics` can score the run live.
+Also ship `data/normal_day.json` (negatives) to prove we don't Red-flag everything.
+
+## 7. Test + merge rules
+
+- Time-order test: features at `t` must not see events `>t` (unit test with shuffled fixture — must fail if leaked).
+- Quantile test: assert `q10 ≤ median ≤ q90` on 3 fixtures.
+- Schema test: gateway rejects bad event with 400 + error field (test it, judges will send junk).
+- No PR merges a new infra service. New dep? Must run on laptop CPU + free tier.
+- Numbers on slides come from `/api/metrics` output pasted into `docs/RESULTS.md` — no invented accuracy.
+
+## 8. Cut list (do not rebuild)
+
+Redis Streams NOT Kafka · in-memory subgraph NOT Memgraph · GraphSAGE/GAT NOT HTGT ·
+Hawkes-decay+XGB NOT full GAttNHP · tiny FedAvg stub NOT Flower/HE/SMPC · Leaflet NOT Deck.gl/Mapbox.
+If stuck >1h on embeddings/Hawkes, ship baseline + decay formula and move to dashboard + replay — judges score the loop, not the paper.

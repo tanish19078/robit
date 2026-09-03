@@ -1,27 +1,36 @@
-# AI Agent Context (Claude / Antigravity)
+# Agent rules — robit/
 
-Welcome to the PRAHARI project repository! This document provides context to help AI agents understand the codebase, the domain, and the goals when generating code or answering queries.
+You are coding in a 36h hackathon repo. Spec: `architecture.md` (contract, wins on conflict).
+Context: `docs/PRAHARI_Final.md`. Keep diffs small, runnable on laptop CPU, no new infra.
 
-## 🎯 Project Mission
-PRAHARI is a predictive intelligence engine built for the Smart India Hackathon 2026 (Problem Statement 26184). Its goal is to intercept cyber-fraud cash-outs by tracking stolen money through multi-hop mule networks and forecasting the exact spatial cell (H3) and time window for withdrawal.
+## Hard bans (prototype)
 
-## 📚 Domain Context
-- **NCRP / 1930 / I4C:** National Cybercrime Reporting Portal. The source of our fraud complaints.
-- **Mule Accounts:** Intermediary accounts used by fraudsters to quickly route and split funds.
-- **Cash-out Points:** ATMs, micro-ATMs, and POS terminals where digital funds are converted to physical, untraceable cash.
-- **The Golden Hour:** The crucial ~30-minute window post-complaint where the money is still in digital transit.
+No Kafka/Flink, Memgraph/Neo4j, PostGIS, full HTGT, full GAttNHP, Flower/HE/SMPC,
+Deck.gl, Mapbox tokens, gRPC/CAD connectors. If asked, implement the §8 fallback instead
+and note it as roadmap.
 
-## 🛠️ Technology Stack Rules
-When implementing or modifying code, prefer the following stack:
-1. **Frontend:** React, Deck.gl, Mapbox GL (for H3 visualization).
-2. **Gateway API:** Node.js, Express, WebSocket (for real-time dashboard events).
-3. **ML Backend API:** Python, FastAPI.
-4. **Machine Learning:** PyTorch, PyTorch Geometric (for Temporal Graphs and GCPAL), Hawkes Processes for forecasting.
-5. **Data Streaming:** Kafka or Redis Streams.
-6. **Database:** PostgreSQL.
+## Conventions
 
-## 🧑‍💻 Coding Guidelines
-- **Modularity:** Keep ML services strictly separate from Gateway/Frontend logic. Connect them via API or Message Queue.
-- **Simulations:** Since real financial data is sensitive, all prototype implementations should utilize synthetic data generators (e.g., AMLSim). Explicitly mark simulations in code.
-- **No Blocking Defaults:** The system is for decision-support. Do not write autonomous execution code that automatically freezes accounts without human-in-the-loop review.
-- **Explainability:** Ensure all AI outputs (predictions, risk scores) return robust evidence payloads for analysts.
+- Services: `gateway/` Node+Express :3000 (I/O, validation, tiers, audit, WSS).
+  `ml-service/` FastAPI :8000 (`graph/`, `mule/`, `forecast/`). Talk only via `architecture.md` §4 routes.
+- Schema frozen (§2): `incident_id, t0, event_id, ts, type, src/dst, amount, channel, bank, device_hash, terminal_id`.
+  Validate both sides (zod + pydantic). Reject `ts < t0` with 400.
+- Hashes only (`acct_hash_*`). Tag synthetic data + simulated actions `SIMULATION`. No PII in logs/screenshots.
+- Time-order: features at `t` see events ≤ `t` only. `eventually_withdrawn` is label-only.
+- Every ML return carries `evidence[]`, component scores (`baseline/learned/final`, per-cell `probability`),
+  `model_version`, and obeys `q10 ≤ median ≤ q90` (sort in code).
+- Tiers: Green <0.35 · Amber 0.35–0.65 · Red >0.65 · Critical = live withdrawal. No auto-freeze —
+  irreversible actions only via `POST /api/actions/simulate` + `audit_log` row.
+- H3 default res 8, configurable via `config.json` (σ, β, weights live there too, not hardcoded).
+- DB: Postgres only; hot state in Redis (`incident:{id}:meta|events|state`). No new stores.
+
+## How to work
+
+1. Pick the earliest unfinished §3 module (M1→M4). Make its API return the contracted shape
+   with stub values before adding the model.
+2. Add/extend fixtures in `data/` + a unit test (schema reject, time-order, quantile order).
+3. Wire gateway → ml → frontend for that module; verify with
+   `replay.py --scenario demo_golden_hour` and `GET /api/metrics` before moving on.
+4. If blocked >1h on PyG/Hawkes, ship the §8 fallback (NetworkX + decay formula + XGB/LR),
+   keep the interface, and unblock the demo path.
+5. Paste measured `/api/metrics` into `docs/RESULTS.md`; never invent precision/latency numbers.

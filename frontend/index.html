@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PRAHARI v0.1 — complaint-anchored cash-out forecast [SIMULATION]</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header>
+  <h1>PRAHARI <span class="sim">SIMULATION v0.1</span></h1>
+  <div class="controls">
+    <label>Gateway <input id="gw" value="http://localhost:3000" size="24" /></label>
+    <label>Incident <input id="inc" value="INC-2026-00041" size="18" /></label>
+    <button id="bGraph">Graph</button>
+    <button id="bForecast">Forecast</button>
+    <button id="bMetrics">Metrics</button>
+  </div>
+</header>
+<main>
+  <section class="left">
+    <div id="tier">no forecast yet</div>
+    <h2>Money path</h2><div id="path">—</div>
+    <h2>Cells</h2><div id="cells">—</div>
+    <h2>Evidence</h2><ul id="evidence"><li>—</li></ul>
+    <h2>Review (human approval required)</h2>
+    <div class="controls">
+      <button data-rev="acknowledge">Acknowledge</button>
+      <button data-rev="escalate">Escalate</button>
+      <button data-rev="dismiss">Dismiss</button>
+      <select id="simAction">
+        <option value="step_up">step_up</option>
+        <option value="hold_request">hold_request</option>
+        <option value="patrol_notify">patrol_notify</option>
+      </select>
+      <button id="bSim">Simulate action</button>
+    </div>
+    <div id="reviewOut">—</div>
+  </section>
+  <section class="right"><div id="map"></div></section>
+</main>
+<h2>Raw</h2><pre id="raw">—</pre>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

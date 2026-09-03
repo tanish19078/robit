@@ -1,0 +1,34 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: prahari
+      POSTGRES_PASSWORD: prahari
+      POSTGRES_DB: prahari
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+  ml-service:
+    build: ../ml-service
+    environment:
+      MODEL_VERSION: prahari-0.1-dev
+    ports: ["8000:8000"]
+    command: uvicorn app:app --host 0.0.0.0 --port 8000
+  gateway:
+    build: ../gateway
+    environment:
+      PORT: 3000
+      ML_URL: http://ml-service:8000
+      MODEL_VERSION: prahari-0.1-dev
+    ports: ["3000:3000"]
+    depends_on: [ml-service]
+  frontend:
+    image: nginx:alpine
+    ports: ["8080:80"]
+    volumes: ["../frontend:/usr/share/nginx/html:ro"]
+    depends_on: [gateway]
+
+volumes:
+  pgdata:

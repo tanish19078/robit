@@ -1,0 +1,1 @@
+{"dependencies":{"express":"^4.21.2"},"name":"prahari-gateway","private":true,"scripts":{"start":"node server.js"},"type":"module","version":"0.1.0"}

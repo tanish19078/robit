@@ -1,7 +1,7 @@
 // PRAHARI gateway v0.1 — Express, in-memory store, SSE live feed.
 // Run: npm install && node server.js   (needs ml-service on ML_URL, default :8000)
 import express from "express";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,8 +11,21 @@ const PORT = process.env.PORT || 3000;
 const ML_URL = process.env.ML_URL || "http://localhost:8000";
 const MODEL_VERSION = process.env.MODEL_VERSION || "prahari-0.1-dev";
 
-// ---- in-memory store (Postgres in compose; memory is fine for v0.1 demo) ----
+// ---- file-backed store (Postgres in compose; JSON file keeps v0.1 restart-safe) ----
+const STORE_FILE = process.env.STORE_FILE ||
+  new URL("../data/gateway_store.json", import.meta.url);
 const db = { incidents: {}, events: [], alerts: [], audit: [], seq: 1 };
+try {
+  const saved = JSON.parse(await readFile(STORE_FILE, "utf8"));
+  Object.assign(db, saved);
+  console.log(`store: loaded ${Object.keys(db.incidents).length} incidents, ${db.events.length} events`);
+} catch { /* first boot: empty store */ }
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() =>
+    writeFile(STORE_FILE, JSON.stringify(db)).catch((e) => console.error("store save failed:", e.message)), 200);
+}
 const sseClients = new Map(); // incident_id -> Set(res)
 
 // tiers calibrated on synthetic fixtures (data/config.json); hardcoded fallback
@@ -62,8 +75,13 @@ app.post("/api/incidents", (req, res) => {
     victim_lat: req.body.victim_lat ?? 28.6285,
     victim_lon: req.body.victim_lon ?? 77.2137,
   };
+  save();
   return res.status(201).json({ incident_id });
 });
+
+app.get("/api/incidents", (_req, res) =>
+  res.json({ incidents: Object.values(db.incidents).map((i) => ({
+    ...i, n_events: incidentEvents(i.incident_id).length })) }));
 
 function addEvent(type, req, res) {
   const e = req.body || {};
@@ -73,6 +91,7 @@ function addEvent(type, req, res) {
   if (!inc) return bad(res, 404, "unknown incident_id");
   if (Date.parse(e.ts) < Date.parse(inc.t0)) return bad(res, 400, "ts before complaint t0");
   db.events.push({ ...e, type });
+  save();
   pushSSE(e.incident_id, { kind: "event", event: e });
   return res.status(202).json({ accepted: e.event_id });
 }
@@ -117,6 +136,7 @@ app.get("/api/incidents/:id/forecast", async (req, res) => {
   db.audit.push({ audit_id: `AUD-${db.seq}`, incident_id: inc.incident_id, alert_id: alert.alert_id,
     prediction: { tier: risk_tier, top_cell: top.h3_cell, window: alert.cashout_window_minutes },
     decision: null, simulated_action: null, model_version: alert.model_version, ts: alert.ts });
+  save();
   pushSSE(inc.incident_id, { kind: "forecast", alert });
   return res.json(alert);
 });
@@ -133,6 +153,7 @@ for (const action of ["acknowledge", "escalate", "dismiss"]) {
     db.audit.push({ audit_id: `AUD-${db.seq}`, incident_id: a.incident_id, alert_id: a.alert_id,
       prediction: null, decision: action, simulated_action: null,
       model_version: a.model_version, ts: a.review.ts });
+    save();
     return res.json(a);
   });
 }
@@ -146,6 +167,7 @@ app.post("/api/actions/simulate", (req, res) => {
     prediction: null, decision: a.status, simulated_action: `${action} [SIMULATION]`,
     model_version: a.model_version, ts: new Date().toISOString() };
   db.audit.push(row);
+  save();
   return res.json(row);
 });
 

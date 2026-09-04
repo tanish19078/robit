@@ -1,16 +1,20 @@
-"""M3: mule scoring. Explainable baseline ships; learned term is a stub (0.0).
+"""M3: mule scoring. Explainable baseline + unsupervised anomaly rank (v0.1).
 
-final = sigmoid(a * baseline + c); a/c live here until calibrated on real runs.
+final = sigmoid(A * baseline + B * learned + C); cuts live in data/config.json notes.
 Returns per-node {id, baseline, learned, final, evidence[]}.
 """
 
 import math
-from datetime import timezone
 
 from graph.build import parse_ts
 
+try:
+    from mule.anomaly import rank as anomaly_rank
+except ImportError:  # pragma: no cover - package layout fallback
+    from anomaly import rank as anomaly_rank
+
 WINDOW_MIN = 5.0
-A, C = 4.0, -1.5
+A, B, C = 3.0, 2.0, -1.5
 
 
 def _sigmoid(x):
@@ -43,20 +47,32 @@ def score_nodes(subgraph, events, t0_str, weights, at_time_str):
             shared_links[d] = shared_links.get(d, 0) + 1
 
     scored = []
+    roots = set(list(hop)[:1])
+    feat_rows, order = [], []
     for node in subgraph.get("nodes", []):
         nid = node["id"]
+        fs = first_seen.get(nid)
         feats = {
             "fan_out_vel": min(1.0, out_5m.get(nid, 0) / 3.0),
             "fan_in_vel": min(1.0, in_5m.get(nid, 0) / 3.0),
-            "is_new": 0.0 if (first_seen.get(nid) is None or parse_ts(first_seen[nid]) <= t0) and nid in (list(hop)[:1] or []) else (
-                1.0 if first_seen.get(nid) and parse_ts(first_seen[nid]) > t0 else 0.0),
+            "is_new": 1.0 if (fs and parse_ts(fs) > t0 and nid not in roots) else 0.0,
             "hop_depth": min(1.0, hop.get(nid, 0) / 3.0),
             "split_ratio": min(1.0, len(out_dsts.get(nid, set())) / 2.0),
             "terminal_conv": min(1.0, shared_links.get(nid, 0) / 2.0),
         }
+        feat_rows.append(feats)
+        order.append(nid)
+    learned_all = [0.0] * len(order)
+    # roots (victim/complaint anchors) are never suspects: rank non-roots only
+    pool_idx = [i for i, nid in enumerate(order) if nid not in roots]
+    if pool_idx:
+        ranked = anomaly_rank([feat_rows[i] for i in pool_idx])
+        for i, r in zip(pool_idx, ranked):
+            learned_all[i] = r
+
+    for nid, feats, learned in zip(order, feat_rows, learned_all):
         baseline = sum(weights.get(k, 0.0) * v for k, v in feats.items())
-        learned = 0.0  # contrastive embedding stub (roadmap)
-        final = _sigmoid(A * (weights and baseline or baseline) + C)
+        final = _sigmoid(A * baseline + B * learned + C)
 
         evidence = []
         if out_5m.get(nid):
@@ -71,7 +87,7 @@ def score_nodes(subgraph, events, t0_str, weights, at_time_str):
             evidence.append(f"{shared_links[nid]} shared-attribute link(s)")
         if hop.get(nid, 0) >= 2:
             evidence.append(f"hop depth {hop[nid]} from complaint")
-        scored.append({"id": nid, "baseline": round(baseline, 3), "learned": learned,
+        scored.append({"id": nid, "baseline": round(baseline, 3), "learned": round(learned, 3),
                        "final": round(final, 3), "evidence": evidence})
     scored.sort(key=lambda r: r["final"], reverse=True)
     return scored

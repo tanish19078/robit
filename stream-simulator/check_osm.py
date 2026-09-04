@@ -1,7 +1,4 @@
-"""Validate the pipeline against real OSM terminals (no server needed).
-
-Run:  python check_osm.py   (from stream-simulator/)
-"""
+"""Run all fixtures through the OSM terminal map (no server). Proves swappability."""
 
 import json
 import os

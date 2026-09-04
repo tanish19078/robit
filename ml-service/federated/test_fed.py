@@ -1,4 +1,4 @@
-"""Run:  python test_fed.py   (from ml-service/)"""
+"""FedAvg == centralized (cosine) + no raw ids in payload."""
 
 import json
 import os

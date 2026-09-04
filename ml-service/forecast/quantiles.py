@@ -1,8 +1,4 @@
-"""M4b: time-to-cash-out quantiles. Deterministic fallback head.
-
-Higher excitation -> sooner expected cash-out. Ordering q10<=med<=q90 enforced.
-Replaced by a learned quantile head once training data exists.
-"""
+"""M4b: deterministic time-to-cash-out quantiles. Higher excitation -> sooner."""
 
 
 def predict_window(excitation_s, n_frontier=1):

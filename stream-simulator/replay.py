@@ -1,7 +1,4 @@
-"""Replay a scenario fixture into the gateway, then print the live forecast.
-
-Stdlib only. Run:  python replay.py --scenario demo_golden_hour [--speed 20] [--gateway http://localhost:3000]
-"""
+"""Replay a scenario fixture into the gateway, print the forecast. Stdlib only."""
 
 import argparse
 import json

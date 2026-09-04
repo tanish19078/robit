@@ -1,8 +1,6 @@
-"""M2: complaint-linked k-hop temporal subgraph. Stdlib only.
+"""M2: k-hop temporal subgraph around complaint roots. Stdlib only.
 
-Builds a directed multigraph from canonical events and returns the k-hop
-neighbourhood around the complaint roots plus a greedy victim->frontier path.
-Time-order is preserved: callers must pass events with ts <= at_time only.
+Callers must pass events with ts <= at_time (time-order preserved by contract).
 """
 
 from collections import defaultdict, deque
@@ -60,7 +58,6 @@ def build_khop(events, roots, depth=3):
     for r in roots:
         first_seen.setdefault(r, None)
 
-    # BFS hop depth from roots (out-edges + shared links).
     hop = {r: 0 for r in roots}
     queue = deque(roots)
     while queue:
@@ -83,7 +80,7 @@ def build_khop(events, roots, depth=3):
 
 
 def trace_path(roots, adj_out):
-    """Greedy max-amount chain from the first root (victim-first)."""
+    """Greedy max-amount chain from the first root."""
     if not roots:
         return []
     path, cur, seen = [roots[0]], roots[0], {roots[0]}

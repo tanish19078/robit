@@ -1,8 +1,4 @@
-"""M3: mule scoring. Explainable baseline + unsupervised anomaly rank (v0.1).
-
-final = sigmoid(A * baseline + B * learned + C); cuts live in data/config.json notes.
-Returns per-node {id, baseline, learned, final, evidence[]}.
-"""
+"""M3: explainable baseline + IsolationForest peer rank. final = sigmoid(A*base + B*learned + C)."""
 
 import math
 
@@ -22,7 +18,7 @@ def _sigmoid(x):
 
 
 def node_features(subgraph, events, t0_str, at_time_str):
-    """Shared feature builder: returns (order, feat_rows, roots). Reused by federated demo."""
+    """(order, feat_rows, roots, aux) shared by the scorer and the federated demo."""
     t0 = parse_ts(t0_str)
     now = parse_ts(at_time_str)
     hop = subgraph.get("hop", {})
@@ -70,7 +66,6 @@ def score_nodes(subgraph, events, t0_str, weights, at_time_str):
     shared_links, hop, first_seen = aux["shared_links"], aux["hop"], aux["first_seen"]
 
     learned_all = [0.0] * len(order)
-    # roots (victim/complaint anchors) are never suspects: rank non-roots only
     pool_idx = [i for i, nid in enumerate(order) if nid not in roots]
     if pool_idx:
         ranked = anomaly_rank([feat_rows[i] for i in pool_idx])

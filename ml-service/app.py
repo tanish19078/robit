@@ -1,8 +1,4 @@
-"""PRAHARI ml-service: FastAPI wrapper over stdlib core (graph/mule/forecast).
-
-Run:  pip install -r requirements.txt
-      uvicorn app:app --port 8000   (from ml-service/)
-"""
+"""PRAHARI ml-service: FastAPI over graph/mule/forecast core. Run from ml-service/."""
 
 import json
 import os
@@ -40,7 +36,7 @@ MODEL_VERSION = os.environ.get("MODEL_VERSION", "prahari-0.1-dev")
 
 
 def run_pipeline(incident, events, at_time=None):
-    """Full M2->M4 in-memory run. Returns the decision-object payload (minus tier)."""
+    """M2->M4 in-memory run. Returns scores, cells, window (tier applied by gateway)."""
     t0 = incident["t0"]
     at_time = at_time or max(e["ts"] for e in events)
     roots = [incident["src_hash"]]
@@ -83,8 +79,6 @@ if FastAPI:
     def forecast(req: ForecastReq):
         out = run_pipeline(req.incident, req.events, req.at_time)
         return {"probable_cashout_cells": [{k: c[k] for k in ("h3_cell", "probability", "nearby_cashout_points", "raw")} for c in out["cells"]],
-                # tier input: excitation S (incident-level imminence, map-independent).
-                # Per-cell raw/probability answers WHERE; S answers WHETHER-ACT-NOW.
                 "intensity": out["excitation"],
                 "cashout_window_minutes": {"q10": out["window"]["q10"], "median": out["window"]["median"], "q90": out["window"]["q90"]},
                 "money_path": out["subgraph"]["path"],

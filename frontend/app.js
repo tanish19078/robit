@@ -1,4 +1,4 @@
-/* PRAHARI v0.1 dashboard. Static page, Leaflet CDN, talks to gateway REST+SSE. */
+/* Static dashboard: gateway REST + SSE. No build step. */
 let map, layer, lastAlert = null, lastMule = {};
 const $ = (id) => document.getElementById(id);
 const gw = () => $("gw").value.replace(/\/$/, "");
@@ -17,7 +17,6 @@ function riskColor(v) {
   return "#2e7d32";
 }
 
-/* ---- map ---- */
 function initMap() {
   map = L.map("map").setView([28.6315, 77.2167], 13);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(map);
@@ -35,7 +34,7 @@ async function drawTerminals(topCell) {
   } catch { /* map still works without terminal feed */ }
 }
 
-/* ---- money graph (SVG, hop columns) ---- */
+/* Money graph: hop columns, node color = mule final. */
 function drawGraph(graph) {
   const svg = $("graphSvg");
   const W = svg.clientWidth || 520, H = 220;
@@ -84,7 +83,6 @@ function drawGraph(graph) {
   }
 }
 
-/* ---- forecast render ---- */
 function renderForecast(a, graph) {
   lastAlert = a;
   lastMule = {};

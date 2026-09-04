@@ -1,12 +1,10 @@
-"""E2E check: boots real ml-service + gateway as subprocesses, replays fixture, asserts.
-
-Stdlib only. Run:  python e2e_check.py   (from stream-simulator/)
-"""
+"""E2E: boot real ml + gateway, replay 3 scenarios, assert tiers. Stdlib only."""
 
 import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 
@@ -51,6 +49,10 @@ def main():
                           cwd=os.path.join(ROOT, "ml-service"),
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     env = dict(os.environ, PORT=str(GW_PORT), ML_URL=f"http://localhost:{ML_PORT}")
+    store_fd, store_path = tempfile.mkstemp(prefix="prahari-e2e-", suffix=".json")
+    os.close(store_fd)
+    os.remove(store_path)
+    env["STORE_FILE"] = store_path
     gw = subprocess.Popen(["node", "server.js"], cwd=os.path.join(ROOT, "gateway"),
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     try:
@@ -58,7 +60,6 @@ def main():
         wait(f"http://localhost:{GW_PORT}/health")
         base = f"http://localhost:{GW_PORT}"
         sc, fc = replay(base, "demo_golden_hour")
-        # schema guard: ts before t0 must 400
         try:
             api("POST", base + "/api/events/transactions",
                 {"event_id": "bad", "incident_id": sc["incident_id"], "ts": "2026-01-01T09:00:00Z",
@@ -84,12 +85,19 @@ def main():
         _, m = api("GET", base + "/api/metrics")
         assert m["incidents"] == 3, m
         assert m["alerts_by_tier"] == {"Red": 1, "Critical": 1, "Green": 1}, m
+        _, lst = api("GET", base + "/api/incidents")
+        got = {i["incident_id"]: i["n_events"] for i in lst["incidents"]}
+        assert got == {sc["incident_id"]: len(sc["events"]),
+                       sc2["incident_id"]: len(sc2["events"]),
+                       sc3["incident_id"]: len(sc3["events"])}, got
         print("E2E PASS")
     finally:
         gw.terminate()
         ml.terminate()
         gw.wait()
         ml.wait()
+        if os.path.exists(store_path):
+            os.remove(store_path)
 
 
 if __name__ == "__main__":

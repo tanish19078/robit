@@ -1,4 +1,4 @@
-"""Smoke test: stdlib only. Run:  python test_smoke.py   (from ml-service/)"""
+"""Regression over all fixtures: true cell first, exc cuts, quantile order. Stdlib."""
 
 import json
 import os

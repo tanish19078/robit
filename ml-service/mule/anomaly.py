@@ -1,12 +1,7 @@
-"""M3 learned term (v0.1): unsupervised anomaly ranking within one incident.
+"""M3 learned term (v0.1): IsolationForest over one incident's non-root nodes.
 
-Uses IsolationForest on the 6 baseline features of the incident's own
-non-root nodes ("which peer in THIS money path looks odd?").
-Deliberately no cross-incident pool: a fraud-dominated history would make
-benign nodes look anomalous and vice versa.
-This is a heuristic stand-in, NOT the contrastive GNN from the roadmap:
-it cannot learn cross-view structural similarity, only feature outlierness.
-sklearn is optional: missing import -> learned=0.0 (baseline-only mode).
+Within-subgraph peer comparison only (no cross-incident pool). Heuristic
+stand-in for the roadmap contrastive GNN. sklearn optional -> all zeros.
 """
 
 try:
@@ -26,7 +21,7 @@ def _to01(scores):
 
 
 def rank(feat_rows):
-    """feat_rows: list of {feature: value}. Returns list of 0..1 anomaly ranks."""
+    """0..1 anomaly ranks (higher = odder peer). Zeros if sklearn missing or <3 rows."""
     if IsolationForest is None or len(feat_rows) < 3:
         return [0.0 for _ in feat_rows]
     X = [[r.get(k, 0.0) for k in FEATURES] for r in feat_rows]

@@ -1,5 +1,4 @@
-// PRAHARI gateway v0.1 — Express, in-memory store, SSE live feed.
-// Run: npm install && node server.js   (needs ml-service on ML_URL, default :8000)
+// PRAHARI gateway: intake + tiers + audit + static dashboard. Needs ml-service on ML_URL.
 import express from "express";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -11,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 const ML_URL = process.env.ML_URL || "http://localhost:8000";
 const MODEL_VERSION = process.env.MODEL_VERSION || "prahari-0.1-dev";
 
-// ---- file-backed store (Postgres in compose; JSON file keeps v0.1 restart-safe) ----
+// JSON file store (Postgres in compose); tiers from data/config.json.
 const STORE_FILE = process.env.STORE_FILE ||
   new URL("../data/gateway_store.json", import.meta.url);
 const db = { incidents: {}, events: [], alerts: [], audit: [], seq: 1 };
@@ -43,9 +42,7 @@ function pushSSE(incidentId, msg) {
 
 function bad(res, code, error) { return res.status(code).json({ error }); }
 
-// Tier runs on excitation S from ml (incident-level imminence, map-independent),
-// NOT on normalized cell share (always sums to 1) or raw cell lambda
-// (does not transfer across maps). Cuts live in data/config.json tiers.
+// Tier on excitation S (map-independent); cuts in data/config.json tiers.
 function tierOf(intensity, hasLiveWithdrawal) {
   if (hasLiveWithdrawal) return "Critical";
   if (intensity > TIERS.red) return "Red";
@@ -62,7 +59,6 @@ async function ml(path, body) {
   return r.json();
 }
 
-// ---- routes ----
 app.get("/health", (_req, res) => res.json({ ok: true, model_version: MODEL_VERSION }));
 
 app.post("/api/incidents", (req, res) => {
@@ -198,11 +194,11 @@ app.get("/api/metrics", (_req, res) => {
     last_forecast: last ? { tier: last.risk_tier, top_cell: last.probable_cashout_cells[0], window: last.cashout_window_minutes } : null });
 });
 
-// dashboard served same-origin (no CORS issues, no extra server)
+// dashboard served same-origin by the gateway
 const FRONTEND_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "frontend");
 app.use(express.static(FRONTEND_DIR));
 
-// SSE live feed (WSS upgrade lands with compose; SSE keeps v0.1 dependency-free)
+// SSE live feed (dependency-free WSS substitute for v0.1)
 app.get("/api/stream/:id", (req, res) => {
   res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
   const id = req.params.id;

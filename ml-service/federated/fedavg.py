@@ -1,14 +1,5 @@
-"""Federated weight-head demo: 3 simulated bank clients, FedAvg, no raw sharing.
-
-Each client holds its own fixtures (its "ledger") and sends ONLY class-mean
-feature vectors + counts. The coordinator averages them (FedAvg over
-sufficient statistics) into global class prototypes; the linear head is
-w = mean_fraud - mean_benign (unit-norm). For mean-based heads this equals
-the centralized computation exactly; the demo asserts cosine similarity
-between federated and centralized weights.
-
-Scope honesty: this federates the linear scoring head, not a GNN encoder.
-Encoder federation + DP + secure aggregation stay on the production roadmap.
+"""3-bank FedAvg over the linear scoring head. Clients share class means + counts
+only — never raw events. Head-only demo; encoder federation is roadmap.
 """
 
 import json
@@ -36,8 +27,7 @@ def load_fixture(name):
 
 
 def client_update(fixture_names):
-    """Local step. Returns (mean_fraud, mean_benign, n_fraud, n_benign, n_nodes).
-    Raw events/ids never leave this function."""
+    """Local means + counts. Raw events never leave this function."""
     sum_f = [0.0] * len(FEATURES)
     sum_b = [0.0] * len(FEATURES)
     n_f = n_b = 0
@@ -76,7 +66,6 @@ def _cos(a, b):
 
 def run_demo():
     updates = {bank: client_update(names) for bank, names in CLIENTS.items()}
-    # FedAvg: sample-weighted average of sufficient statistics
     tot_f = sum(u["n_fraud"] for u in updates.values())
     tot_b = sum(u["n_benign"] for u in updates.values())
     agg_f = [sum(u["mean_fraud"][i] * u["n_fraud"] for u in updates.values()) / (tot_f or 1)
@@ -84,7 +73,6 @@ def run_demo():
     agg_b = [sum(u["mean_benign"][i] * u["n_benign"] for u in updates.values()) / (tot_b or 1)
              for i in range(len(FEATURES))]
     fed_weights = _norm([a - b for a, b in zip(agg_f, agg_b)])
-    # centralized reference on pooled data
     pooled = client_update([n for names in CLIENTS.values() for n in names])
     tot_pf = pooled["n_fraud"] or 1
     tot_pb = pooled["n_benign"] or 1

@@ -1,8 +1,7 @@
-"""M4a: Hawkes-lite cell scoring over H3 cells. Stdlib only.
+"""M4a: Hawkes-lite cell scoring. Stdlib only.
 
-risk(c,t) = base_prior(c) + S(t) * proximity(c) * density(c)
-S(t)      = sum over transfers (ts<=t) of amt_norm * exp(-beta * dt_min)
-proximity = gaussian falloff victim -> cell centroid, sigma_km from config
+risk(c,t) = base_prior(c) + S(t) * proximity(c) * density(c), S = recency-decayed
+transfer excitation. Tiers use S (map-independent); cells use the distribution.
 """
 
 import math
@@ -20,7 +19,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 
 def cell_table(terminals):
-    """Aggregate terminals -> {cell: {lat, lon, count, terminal_ids}}."""
+    """Terminals -> {cell: centroid lat/lon, count, terminal_ids}."""
     cells = {}
     for t in terminals:
         c = cells.setdefault(t["h3_r8"], {"lat": 0.0, "lon": 0.0, "count": 0,

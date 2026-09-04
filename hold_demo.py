@@ -1,8 +1,4 @@
-"""Hold the demo stack up: ml:8000 + gateway:3000, replay fixture, then stay alive.
-
-Run from robit/. Keep this process running while you use http://localhost:3000/.
-Stop with Ctrl+C.
-"""
+"""Boot ml:8000 + gateway:3000, replay the demo, stay up until Ctrl+C."""
 
 import os
 import subprocess

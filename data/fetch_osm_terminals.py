@@ -1,8 +1,6 @@
-"""Fetch real ATM/bank coordinates from OpenStreetMap Overpass API.
+"""Pull ATM/bank coords from OSM Overpass into data/terminals.json schema. Needs h3.
 
-Stdlib + h3 only. Run:  python fetch_osm_terminals.py [--bbox S,W,N,E] [--out terminals_osm_delhi.json]
-Default bbox: central Delhi (Connaught Place + Karol Bagh + Paharganj).
-Output schema matches data/terminals.json. Tagged SIMULATION-safe: public OSM data (ODbL).
+Run:  python fetch_osm_terminals.py [--bbox S,W,N,E] [--out FILE] [--res 8]
 """
 
 import argparse
@@ -34,7 +32,7 @@ def query(bbox):
             req = urllib.request.Request(mirror, data=body, headers=headers)
             with urllib.request.urlopen(req, timeout=120) as r:
                 return json.load(r)
-        except Exception as ex:  # try next mirror
+        except Exception as ex:
             last = ex
     raise RuntimeError(f"all overpass mirrors failed: {last}")
 

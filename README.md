@@ -5,8 +5,8 @@ a clock; the system traces the live money path and returns **where** (ranked H3
 cells), **when** (q10/median/q90 minutes), **who** (mule-ranked nodes) and the
 **evidence** — for human-reviewed, simulated intervention.
 
-Spec: `architecture.md` · product context: `docs/PRAHARI_Final.md` ·
-agent rules: `claude.md` · measured numbers: `docs/RESULTS.md`.
+Spec: `docs/architecture.md` · product context: `docs/PRAHARI_Final.md` ·
+agent rules: `docs/claude.md` · measured numbers: `docs/RESULTS.md`.
 
 ## Run it
 

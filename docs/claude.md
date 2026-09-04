@@ -1,6 +1,6 @@
 # Agent rules — robit/
 
-You are coding in a 36h hackathon repo. Spec: `architecture.md` (contract, wins on conflict).
+You are coding in a 36h hackathon repo. Spec: `docs/architecture.md` (contract, wins on conflict).
 Context: `docs/PRAHARI_Final.md`. Keep diffs small, runnable on laptop CPU, no new infra.
 
 ## Hard bans (prototype)
@@ -12,7 +12,7 @@ and note it as roadmap.
 ## Conventions
 
 - Services: `gateway/` Node+Express :3000 (I/O, validation, tiers, audit, WSS).
-  `ml-service/` FastAPI :8000 (`graph/`, `mule/`, `forecast/`). Talk only via `architecture.md` §4 routes.
+  `ml-service/` FastAPI :8000 (`graph/`, `mule/`, `forecast/`). Talk only via `docs/architecture.md` §4 routes.
 - Schema frozen (§2): `incident_id, t0, event_id, ts, type, src/dst, amount, channel, bank, device_hash, terminal_id`.
   Validate both sides (zod + pydantic). Reject `ts < t0` with 400.
 - Hashes only (`acct_hash_*`). Tag synthetic data + simulated actions `SIMULATION`. No PII in logs/screenshots.

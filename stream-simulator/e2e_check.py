@@ -82,14 +82,19 @@ def main():
         assert fc3["risk_tier"] == "Green", fc3["risk_tier"]
         print("E2E negative:", fc3["risk_tier"], fc3["probable_cashout_cells"][0])
 
+        sc4, fc4 = replay(base, "repeat_vendor")
+        assert fc4["risk_tier"] == "Amber", fc4["risk_tier"]
+        print("E2E fusion-cap:", fc4["risk_tier"], "(hot burst, cool peer)")
+
         _, m = api("GET", base + "/api/metrics")
-        assert m["incidents"] == 3, m
-        assert m["alerts_by_tier"] == {"Red": 1, "Critical": 1, "Green": 1}, m
+        assert m["incidents"] == 4, m
+        assert m["alerts_by_tier"] == {"Red": 1, "Critical": 1, "Green": 1, "Amber": 1}, m
         _, lst = api("GET", base + "/api/incidents")
         got = {i["incident_id"]: i["n_events"] for i in lst["incidents"]}
         assert got == {sc["incident_id"]: len(sc["events"]),
                        sc2["incident_id"]: len(sc2["events"]),
-                       sc3["incident_id"]: len(sc3["events"])}, got
+                       sc3["incident_id"]: len(sc3["events"]),
+                       sc4["incident_id"]: len(sc4["events"])}, got
         print("E2E PASS")
     finally:
         gw.terminate()

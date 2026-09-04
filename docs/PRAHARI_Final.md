@@ -153,23 +153,22 @@ Learned add-on (GCPAL-inspired, not a reimplementation claim):
 For each candidate H3 cell `c` at time `t`:
 
 ```text
-risk(c, t) = base_demand(c, dow, hour)
-           + sum over recent transfers i [ w_i * spatial_kernel(c, c_i) * exp(-beta * (t - t_i)) ]
-           + graph_context_score(incident_subgraph)
+S(t)       = sum over transfers i [ amt_norm_i * exp(-beta*(t - t_i)) * (1 + transfers within ±5 min) ]
+risk(c, t) = base_prior(c) + S(t) * spatial_kernel(c) * density(c)
 ```
 
-* `base_demand` — normal ATM-cluster activity (lightweight historical prior by cell, day-of-week, and hour to suppress false positives on busy terminals).
-* `spatial_kernel` — Gaussian falloff with distance between cells.
-* `exp(-beta*dt)` — recency decay; the core Hawkes intuition.
-* `graph_context_score` — XGBoost on incident features + node embeddings, outputting `P(cash-out in cell c | history)`.
+* `S(t)` — burst-weighted excitation: lone transfers stay cool, rapid bursts ignite.
+* `spatial_kernel` — Gaussian falloff victim → cell centroid.
+* `density` — terminal concentration in the cell.
 
 Time window: quantile regression head predicting `q10 ≤ q50 ≤ q90` minutes-to-cash-out with non-crossing penalty. We report intervals, never a single brittle timestamp.
 
 Decision fusion:
 
 ```text
-final = calibrated_graph_risk + cashout_intensity + velocity_bonus - uncertainty_penalty
-Green (<0.35): monitor | Amber (0.35-0.65): analyst task | Red (>0.65): bank/LEA alert | Critical: active withdrawal signal
+tier on S (cuts in data/config.json): Green (<1.2): monitor | Amber (1.2-2.0): analyst task
+Red (>2.0 + suspicious peer): bank/LEA alert | Critical: active withdrawal signal
+fusion cap: Red without a suspicious peer steps down to Amber (false-positive brake)
 ```
 
 Every alert carries: path, cell, window, confidence, evidence bullets, model version, reviewer decision, audit ID.

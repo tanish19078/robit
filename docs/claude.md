@@ -19,7 +19,7 @@ and note it as roadmap.
 - Time-order: features at `t` see events ≤ `t` only. `eventually_withdrawn` is label-only.
 - Every ML return carries `evidence[]`, component scores (`baseline/learned/final`, per-cell `probability`),
   `model_version`, and obeys `q10 ≤ median ≤ q90` (sort in code).
-- Tiers on excitation S (cuts in data/config.json: Green <0.2 · Amber 0.2–0.4 · Red >0.4) · Critical = live withdrawal. No auto-freeze —
+- Tiers on excitation S (cuts in data/config.json: Green <1.2 · Amber 1.2–2.0 · Red >2.0, fusion-capped by mule suspicion) · Critical = live withdrawal. No auto-freeze —
   irreversible actions only via `POST /api/actions/simulate` + `audit_log` row.
 - H3 default res 8, configurable via `config.json` (σ, β, weights live there too, not hardcoded).
 - DB: Postgres only; hot state in Redis (`incident:{id}:meta|events|state`). No new stores.

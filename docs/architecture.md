@@ -58,23 +58,23 @@ Owner: backend person. Done when: `replay.py` creates incident + 15 events, all 
 - Default: 2-layer GraphSAGE/GAT (PyG). Output: `{nodes:[{id, score_hint, hop}], edges:[...], path:[victim…frontier]}`.
 - Fallback if PyG breaks: NetworkX + hand feats. Demo must not depend on GPU.
 
-### M3 — Mule score [ml-service/mule/] — baseline ships, learned is bonus
+### M3 — Mule score [ml-service/mule/] — baseline + IsolationForest peer rank
 ```text
 baseline = w1*fan_out_vel + w2*fan_in_vel + w3*is_new + w4*hop_depth + w5*split_ratio + w6*terminal_conv
-final = sigmoid(a*baseline + b*learned + c)   # learned=0 until contrastive lands
+final = sigmoid(3*baseline + 2*learned - 1.5)   # learned = within-incident anomaly rank; roots excluded
 ```
 Return `{baseline, learned, final, evidence[]}` per node. Evidence strings are the demo —
 e.g. `"fan-out 3 in 4 min"`, `"first seen 10:03"`. Tune `w*` on `data/` fixtures, document in `ml-service/mule/weights.json`.
 
 ### M4 — Where+When [ml-service/forecast/]
 ```text
-risk(c,t) = base_prior(c,dow,hour) + Σ w_i·exp(-dist²/2σ²)·exp(-β·(t−t_i)) + xgb(incident_feats)
+S(t)      = Σ amt_norm_i · exp(-β·dt_i) · (1 + transfers within ±5 min)   # burst-weighted excitation
+risk(c,t) = base_prior(c) + S(t) · proximity(c) · density(c)
 ```
-- Candidates: H3 res 8 cells within 2 rings of incident terminals (default σ, β in `config.json`, make them flags).
-- `xgb`: binary `P(cashout in c)`. Train on synthetic fixtures; if no time, logistic regression is acceptable — keep the interface.
-- Time: quantile head → `{q10, median, q90}` mins. Enforce `q10 ≤ median ≤ q90` in code (sort + penalty).
-- Tiers run on excitation S (map-independent imminence, cuts in data/config.json:
-  Green <0.2 · Amber 0.2–0.4 · Red >0.4) · live withdrawal = `Critical`.
+- Candidates: H3 res 8 cells (σ, β in `data/config.json`).
+- Time: `median = clamp(30 − 2·S, 5, 120)`, q10/q90 scaled; order enforced.
+- Tiers on S (cuts in data/config.json: Green <1.2 · Amber 1.2–2.0 · Red >2.0) · live withdrawal = `Critical`.
+- Fusion cap (FP brake): Red needs max mule final ≥0.5, else Amber; Amber needs ≥0.35, else Green.
 
 Forecast response = decision object (gateway persists + pushes WSS):
 `{incident_id, complaint_clock_min, risk_tier, money_path, probable_cashout_cells[{h3_cell, probability, nearby_cashout_points}], cashout_window_minutes, evidence[], recommended_action, model_version, human_review_required:true}`.

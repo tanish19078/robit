@@ -28,10 +28,10 @@ function save() {
 const sseClients = new Map(); // incident_id -> Set(res)
 
 // tiers calibrated on synthetic fixtures (data/config.json); hardcoded fallback
-let TIERS = { amber: 0.35, red: 0.5 };
+let TIERS = { amber: 1.2, red: 2.0, mule_cap_red: 0.5, mule_cap_amber: 0.35 };
 try {
   const cfg = JSON.parse(await readFile(new URL("../data/config.json", import.meta.url), "utf8"));
-  if (cfg.tiers) TIERS = { amber: cfg.tiers.amber, red: cfg.tiers.red };
+  if (cfg.tiers) TIERS = { ...TIERS, ...cfg.tiers };
 } catch { /* fallback above */ }
 
 function pushSSE(incidentId, msg) {
@@ -116,7 +116,11 @@ app.get("/api/incidents/:id/forecast", async (req, res) => {
   } catch (err) { return bad(res, 502, String(err.message || err)); }
   const top = f.probable_cashout_cells[0];
   const liveWd = events.some((e) => e.type === "withdrawal");
-  const risk_tier = tierOf(f.intensity ?? top.probability, liveWd);
+  let risk_tier = tierOf(f.intensity ?? top.probability, liveWd);
+  // fusion cap: a hot burst with no suspicious peer steps down a tier (FP brake)
+  const maxFinal = Math.max(...(f.mule || []).map((n) => n.final), 0);
+  if (!liveWd && risk_tier === "Red" && maxFinal < TIERS.mule_cap_red) risk_tier = "Amber";
+  if (!liveWd && risk_tier === "Amber" && maxFinal < TIERS.mule_cap_amber) risk_tier = "Green";
   const complaint_clock_min = Math.round(
     (Date.parse(events[events.length - 1].ts) - Date.parse(inc.t0)) / 60000);
   const alert = {

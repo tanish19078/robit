@@ -35,17 +35,20 @@ def cell_table(terminals):
     return cells
 
 
-def excitation(events, at_time_str, beta_per_min, ref_amount=50000.0):
+def excitation(events, at_time_str, beta_per_min, ref_amount=50000.0, window_min=5.0):
     now = parse_ts(at_time_str)
-    total = 0.0
+    pts = []
     for e in events:
         if e.get("type") != "transfer":
             continue
         dt = (now - parse_ts(e["ts"])).total_seconds() / 60.0
         if dt < 0:
             continue
-        amt = min(1.0, (e.get("amount") or 0) / ref_amount)
-        total += amt * math.exp(-beta_per_min * dt)
+        pts.append((dt, min(1.0, (e.get("amount") or 0) / ref_amount)))
+    total = 0.0
+    for i, (dti, amti) in enumerate(pts):
+        near = sum(1 for j, (dtj, _) in enumerate(pts) if j != i and abs(dti - dtj) <= window_min)
+        total += amti * math.exp(-beta_per_min * dti) * (1 + near)
     return total
 
 

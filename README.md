@@ -19,9 +19,10 @@ python hold_demo.py        # boots ml:8000 + gateway:3000, replays demo, stays u
 ```
 
 Demo flow: complaint `10:00` → Layer-1 `10:01` → split `10:03` → forecast
-**Red, top cell p=0.67, window 12/22/37** → analyst ack/escalate → simulated
-`step_up` + audit row. Other scenarios: `python stream-simulator/replay.py
---scenario fraud_multi_path|fraud_withdrawal|normal_day`.
+**Red, top cell p=0.69, window 4/8/13** → analyst ack/escalate → simulated
+`step_up` + audit row. Batch all 9 reports:
+`python stream-simulator/replay_all.py --gateway http://localhost:3000`
+→ verdict table with precision/recall (currently 1.00/1.00, FP 0.00).
 
 ## How it works (4 modules)
 
@@ -33,9 +34,10 @@ Demo flow: complaint `10:00` → Layer-1 `10:01` → split `10:03` → forecast
    hop depth, split, terminal convergence) + IsolationForest peer rank.
    Victims are anchors, never suspects. `final = sigmoid(3·base + 2·learned − 1.5)`.
 4. **Where+When** (`ml-service/forecast/`): Hawkes-lite cell scores
-   (`base + S·proximity·density`) + quantile time window. **Tiers run on
-   excitation S** (map-independent imminence: Green <0.2 · Amber 0.2–0.4 ·
-   Red >0.4, cuts in `data/config.json`); cells answer *where*.
+   (`base + S·proximity·density`, S = burst-weighted excitation) + quantile
+   time window. **Tiers run on S** (Green <1.2 · Amber 1.2–2.0 · Red >2.0,
+   cuts in `data/config.json`); cells answer *where*. **Fusion cap:** Red
+   without a suspicious peer (max mule final <0.5) steps down to Amber.
    Live withdrawal event → Critical.
 
 Federation (`ml-service/federated/`): 3 simulated bank clients share class means
@@ -49,12 +51,15 @@ gateway/            Express :3000 — API, tiers, audit, file store, serves fron
 ml-service/         FastAPI :8000 — graph/ mule/ forecast/ federated/ (+ smoke + fed tests)
 frontend/           static dashboard — tier badge, SVG money-graph, mule table,
                     Leaflet heatmap, review buttons, metrics, federation panel
-stream-simulator/   replay.py (scenarios) · e2e_check.py · check_osm.py
-data/               config.json · terminals.json (test fixture) ·
+stream-simulator/   replay.py (single scenario) · replay_all.py (9-report batch) ·
+                    e2e_check.py · check_osm.py
+data/               config.json (tiers + weights) · terminals.json (test fixture) ·
                     terminals_osm_delhi.json (265 real OSM ATMs, 35 H3 cells) ·
-                    4 scenario fixtures · fetch_osm_terminals.py
+                    9 scenario fixtures (4 fraud, 4 negative, 1 capped) ·
+                    fetch_osm_terminals.py
 infra/              docker-compose.yml (needs Docker; laptop runs without it)
-docs/               PRAHARI_Final.md · RESULTS.md · DATA_STRATEGY.md · DATA_REQUEST_LETTER.md
+docs/               PRAHARI_Final.md · RESULTS.md · DATA_STRATEGY.md ·
+                    DATA_REQUEST_LETTER.md · DEMO_BRIEF.md
 hold_demo.py        one-command local stack
 ```
 
@@ -77,10 +82,11 @@ cd ml-service; python test_smoke.py; python federated/test_fed.py
 cd ../stream-simulator; python e2e_check.py; python check_osm.py
 ```
 
-4 fixtures (3 fraud shapes + 1 negative): true cell ranked first, fraud
-excitation 0.53–2.94 vs negative 0.16, quantiles ordered, fraud nodes top-3,
-e2e tiers exactly {Red, Critical, Green}. See `docs/RESULTS.md` for the
-transfer finding (why S, not cell share) and all measured values.
+9 fixtures (4 fraud, 4 negative, 1 capped): excitation separates fraud
+bursts (6.3–11.8; withdrawal 1.1 via live event) from negatives (0.1–1.0);
+true cell first; quantiles ordered; e2e tiers exactly
+{Red, Critical, Green, Amber}. `replay_all.py` prints the live confusion
+table (currently TP=4 FP=0). Full numbers: `docs/RESULTS.md`.
 
 ## Safeguards
 

@@ -180,6 +180,14 @@ app.get("/api/terminals", async (_req, res) => {
   } catch { res.json({ terminals: [] }); }
 });
 
+app.get("/api/federated/demo", async (_req, res) => {
+  try {
+    const r = await fetch(`${ML_URL}/ml/federated/demo`);
+    if (!r.ok) throw new Error(`ml -> ${r.status}`);
+    return res.json(await r.json());
+  } catch (err) { return bad(res, 502, String(err.message || err)); }
+});
+
 app.get("/api/metrics", (_req, res) => {
   const byTier = {};
   for (const a of db.alerts) byTier[a.risk_tier] = (byTier[a.risk_tier] || 0) + 1;

@@ -21,14 +21,14 @@ def _sigmoid(x):
     return 1.0 / (1.0 + math.exp(-x))
 
 
-def score_nodes(subgraph, events, t0_str, weights, at_time_str):
+def node_features(subgraph, events, t0_str, at_time_str):
+    """Shared feature builder: returns (order, feat_rows, roots). Reused by federated demo."""
     t0 = parse_ts(t0_str)
     now = parse_ts(at_time_str)
     hop = subgraph.get("hop", {})
     first_seen = subgraph.get("first_seen", {})
 
     out_5m, in_5m, out_dsts, shared_links = {}, {}, {}, {}
-    in_amt, out_amt = {}, {}
     for e in subgraph.get("edges", []):
         ets = parse_ts(e["ts"])
         dt_min = (now - ets).total_seconds() / 60.0
@@ -36,8 +36,6 @@ def score_nodes(subgraph, events, t0_str, weights, at_time_str):
             continue  # from the future relative to forecast time: ignore
         s, d = e["src"], e["dst"]
         if e["type"] == "transfer":
-            in_amt[d] = in_amt.get(d, 0) + (e.get("amount") or 0)
-            out_amt[s] = out_amt.get(s, 0) + (e.get("amount") or 0)
             if dt_min <= WINDOW_MIN:
                 out_5m[s] = out_5m.get(s, 0) + 1
                 in_5m[d] = in_5m.get(d, 0) + 1
@@ -46,7 +44,6 @@ def score_nodes(subgraph, events, t0_str, weights, at_time_str):
             shared_links[s] = shared_links.get(s, 0) + 1
             shared_links[d] = shared_links.get(d, 0) + 1
 
-    scored = []
     roots = set(list(hop)[:1])
     feat_rows, order = [], []
     for node in subgraph.get("nodes", []):
@@ -62,6 +59,16 @@ def score_nodes(subgraph, events, t0_str, weights, at_time_str):
         }
         feat_rows.append(feats)
         order.append(nid)
+    aux = {"out_5m": out_5m, "in_5m": in_5m, "out_dsts": out_dsts,
+           "shared_links": shared_links, "hop": hop, "first_seen": first_seen}
+    return order, feat_rows, roots, aux
+
+
+def score_nodes(subgraph, events, t0_str, weights, at_time_str):
+    order, feat_rows, roots, aux = node_features(subgraph, events, t0_str, at_time_str)
+    out_5m, in_5m, out_dsts = aux["out_5m"], aux["in_5m"], aux["out_dsts"]
+    shared_links, hop, first_seen = aux["shared_links"], aux["hop"], aux["first_seen"]
+
     learned_all = [0.0] * len(order)
     # roots (victim/complaint anchors) are never suspects: rank non-roots only
     pool_idx = [i for i, nid in enumerate(order) if nid not in roots]
@@ -70,6 +77,7 @@ def score_nodes(subgraph, events, t0_str, weights, at_time_str):
         for i, r in zip(pool_idx, ranked):
             learned_all[i] = r
 
+    scored = []
     for nid, feats, learned in zip(order, feat_rows, learned_all):
         baseline = sum(weights.get(k, 0.0) * v for k, v in feats.items())
         final = _sigmoid(A * baseline + B * learned + C)

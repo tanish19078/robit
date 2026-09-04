@@ -18,6 +18,7 @@ except ImportError:  # core stays importable/testable without web deps
 
 from forecast.hawkes import score_cells
 from forecast.quantiles import predict_window
+from federated.fedavg import run_demo as federated_demo
 from graph.build import build_khop
 from mule.score import score_nodes
 
@@ -88,3 +89,7 @@ if FastAPI:
                 "suspected_nodes": [n["id"] for n in out["mule"][:3]],
                 "mule": out["mule"], "excitation": out["excitation"],
                 "model_version": out["model_version"]}
+
+    @app.get("/ml/federated/demo")
+    def fed_demo():
+        return federated_demo()

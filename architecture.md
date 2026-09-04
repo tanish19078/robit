@@ -73,7 +73,8 @@ risk(c,t) = base_prior(c,dow,hour) + Σ w_i·exp(-dist²/2σ²)·exp(-β·(t−t
 - Candidates: H3 res 8 cells within 2 rings of incident terminals (default σ, β in `config.json`, make them flags).
 - `xgb`: binary `P(cashout in c)`. Train on synthetic fixtures; if no time, logistic regression is acceptable — keep the interface.
 - Time: quantile head → `{q10, median, q90}` mins. Enforce `q10 ≤ median ≤ q90` in code (sort + penalty).
-- Tiers: `<0.35 Green` monitor · `0.35–0.65 Amber` task · `>0.65 Red` alert · live withdrawal = `Critical`.
+- Tiers run on excitation S (map-independent imminence, cuts in data/config.json:
+  Green <0.2 · Amber 0.2–0.4 · Red >0.4) · live withdrawal = `Critical`.
 
 Forecast response = decision object (gateway persists + pushes WSS):
 `{incident_id, complaint_clock_min, risk_tier, money_path, probable_cashout_cells[{h3_cell, probability, nearby_cashout_points}], cashout_window_minutes, evidence[], recommended_action, model_version, human_review_required:true}`.

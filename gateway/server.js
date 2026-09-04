@@ -43,8 +43,9 @@ function pushSSE(incidentId, msg) {
 
 function bad(res, code, error) { return res.status(code).json({ error }); }
 
-// Tier runs on ABSOLUTE cash-out intensity (top-cell raw lambda), not on the
-// normalized share (which always sums to 1 and keeps quiet incidents near ~0.5).
+// Tier runs on excitation S from ml (incident-level imminence, map-independent),
+// NOT on normalized cell share (always sums to 1) or raw cell lambda
+// (does not transfer across maps). Cuts live in data/config.json tiers.
 function tierOf(intensity, hasLiveWithdrawal) {
   if (hasLiveWithdrawal) return "Critical";
   if (intensity > TIERS.red) return "Red";

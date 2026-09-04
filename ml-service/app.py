@@ -83,7 +83,9 @@ if FastAPI:
     def forecast(req: ForecastReq):
         out = run_pipeline(req.incident, req.events, req.at_time)
         return {"probable_cashout_cells": [{k: c[k] for k in ("h3_cell", "probability", "nearby_cashout_points", "raw")} for c in out["cells"]],
-                "intensity": out["cells"][0]["raw"] if out["cells"] else 0.0,
+                # tier input: excitation S (incident-level imminence, map-independent).
+                # Per-cell raw/probability answers WHERE; S answers WHETHER-ACT-NOW.
+                "intensity": out["excitation"],
                 "cashout_window_minutes": {"q10": out["window"]["q10"], "median": out["window"]["median"], "q90": out["window"]["q90"]},
                 "money_path": out["subgraph"]["path"],
                 "suspected_nodes": [n["id"] for n in out["mule"][:3]],

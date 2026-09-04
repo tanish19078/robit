@@ -13,4 +13,5 @@ pre { background: #f5f5f5; padding: 8px; margin: 0 16px 16px; overflow: auto; ma
 table { border-collapse: collapse; font-size: 12px; }
 th, td { border: 1px solid #ccc; padding: 2px 8px; text-align: right; }
 td:first-child, th:first-child { text-align: left; }
+.dim { color: #666; font-size: 12px; }
 h2 { font-size: 14px; margin: 12px 0 4px; }

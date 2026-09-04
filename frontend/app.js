@@ -135,6 +135,15 @@ function renderMetrics(m) {
 
 $("bForecast").onclick = async () => { try { await doForecast(); } catch (e) { show(String(e)); } };
 $("bMetrics").onclick = async () => { try { renderMetrics(await jget("/api/metrics")); } catch (e) { show(String(e)); } };
+$("bFed").onclick = async () => {
+  try {
+    const f = await jget("/api/federated/demo");
+    $("metrics").innerHTML = `<div>fed vs centralized cosine <b>${f.cosine_similarity}</b> · raw tables shared: <b>${f.raw_tables_shared}</b></div>` +
+      `<div>${Object.entries(f.clients).map(([k, v]) => `${k}: ${v.n_nodes} nodes`).join(" · ")}</div>` +
+      `<div class="dim">${f.scope}</div>`;
+    show(f);
+  } catch (e) { show(String(e)); }
+};
 $("bRefreshInc").onclick = async () => { await loadIncidents(false); };
 $("incSel").onchange = async (e) => { $("inc").value = e.target.value; try { await doForecast(); } catch (err) { show(String(err)); } };
 document.querySelectorAll("[data-rev]").forEach((b) => {

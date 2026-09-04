@@ -9,4 +9,8 @@ main { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 16p
 #tier.Red { background: #ffcdd2; } #tier.Amber { background: #ffe0b2; }
 #tier.Green { background: #c8e6c9; } #tier.Critical { background: #b71c1c; color: #fff; }
 pre { background: #f5f5f5; padding: 8px; margin: 0 16px 16px; overflow: auto; max-height: 300px; }
+#graphSvg { border: 1px solid #ccc; background: #fafafa; }
+table { border-collapse: collapse; font-size: 12px; }
+th, td { border: 1px solid #ccc; padding: 2px 8px; text-align: right; }
+td:first-child, th:first-child { text-align: left; }
 h2 { font-size: 14px; margin: 12px 0 4px; }

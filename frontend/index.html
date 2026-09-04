@@ -11,9 +11,12 @@
 <header>
   <h1>PRAHARI <span class="sim">SIMULATION v0.1</span></h1>
   <div class="controls">
-    <label>Gateway <input id="gw" value="http://localhost:3000" size="24" /></label>
-    <label>Incident <input id="inc" value="INC-2026-00041" size="18" /></label>
-    <button id="bGraph">Graph</button>
+    <label>Gateway <input id="gw" value="http://localhost:3000" size="22" /></label>
+    <label>Incident
+      <select id="incSel"></select>
+      <input id="inc" value="INC-2026-00041" size="16" />
+    </label>
+    <button id="bRefreshInc">⟳ incidents</button>
     <button id="bForecast">Forecast</button>
     <button id="bMetrics">Metrics</button>
   </div>
@@ -22,6 +25,9 @@
   <section class="left">
     <div id="tier">no forecast yet</div>
     <h2>Money path</h2><div id="path">—</div>
+    <h2>Money graph (hop columns, color = mule risk)</h2>
+    <svg id="graphSvg" width="100%" height="220"></svg>
+    <h2>Mule table (baseline + learned → final)</h2><div id="mules">—</div>
     <h2>Cells</h2><div id="cells">—</div>
     <h2>Evidence</h2><ul id="evidence"><li>—</li></ul>
     <h2>Review (human approval required)</h2>
@@ -38,7 +44,10 @@
     </div>
     <div id="reviewOut">—</div>
   </section>
-  <section class="right"><div id="map"></div></section>
+  <section class="right">
+    <div id="map"></div>
+    <h2>Metrics</h2><div id="metrics">—</div>
+  </section>
 </main>
 <h2>Raw</h2><pre id="raw">—</pre>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

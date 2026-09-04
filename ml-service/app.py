@@ -81,7 +81,8 @@ if FastAPI:
     @app.post("/ml/forecast")
     def forecast(req: ForecastReq):
         out = run_pipeline(req.incident, req.events, req.at_time)
-        return {"probable_cashout_cells": [{k: c[k] for k in ("h3_cell", "probability", "nearby_cashout_points")} for c in out["cells"]],
+        return {"probable_cashout_cells": [{k: c[k] for k in ("h3_cell", "probability", "nearby_cashout_points", "raw")} for c in out["cells"]],
+                "intensity": out["cells"][0]["raw"] if out["cells"] else 0.0,
                 "cashout_window_minutes": {"q10": out["window"]["q10"], "median": out["window"]["median"], "q90": out["window"]["q90"]},
                 "money_path": out["subgraph"]["path"],
                 "suspected_nodes": [n["id"] for n in out["mule"][:3]],

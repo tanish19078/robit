@@ -15,6 +15,13 @@ const MODEL_VERSION = process.env.MODEL_VERSION || "prahari-0.1-dev";
 const db = { incidents: {}, events: [], alerts: [], audit: [], seq: 1 };
 const sseClients = new Map(); // incident_id -> Set(res)
 
+// tiers calibrated on synthetic fixtures (data/config.json); hardcoded fallback
+let TIERS = { amber: 0.35, red: 0.5 };
+try {
+  const cfg = JSON.parse(await readFile(new URL("../data/config.json", import.meta.url), "utf8"));
+  if (cfg.tiers) TIERS = { amber: cfg.tiers.amber, red: cfg.tiers.red };
+} catch { /* fallback above */ }
+
 function pushSSE(incidentId, msg) {
   for (const res of sseClients.get(incidentId) || []) {
     res.write(`data: ${JSON.stringify(msg)}\n\n`);
@@ -23,10 +30,12 @@ function pushSSE(incidentId, msg) {
 
 function bad(res, code, error) { return res.status(code).json({ error }); }
 
-function tierOf(topP, hasLiveWithdrawal) {
+// Tier runs on ABSOLUTE cash-out intensity (top-cell raw lambda), not on the
+// normalized share (which always sums to 1 and keeps quiet incidents near ~0.5).
+function tierOf(intensity, hasLiveWithdrawal) {
   if (hasLiveWithdrawal) return "Critical";
-  if (topP > 0.65) return "Red";
-  if (topP >= 0.35) return "Amber";
+  if (intensity > TIERS.red) return "Red";
+  if (intensity >= TIERS.amber) return "Amber";
   return "Green";
 }
 
@@ -91,7 +100,7 @@ app.get("/api/incidents/:id/forecast", async (req, res) => {
   } catch (err) { return bad(res, 502, String(err.message || err)); }
   const top = f.probable_cashout_cells[0];
   const liveWd = events.some((e) => e.type === "withdrawal");
-  const risk_tier = tierOf(top.probability, liveWd);
+  const risk_tier = tierOf(f.intensity ?? top.probability, liveWd);
   const complaint_clock_min = Math.round(
     (Date.parse(events[events.length - 1].ts) - Date.parse(inc.t0)) / 60000);
   const alert = {

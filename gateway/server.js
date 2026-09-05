@@ -126,9 +126,11 @@ app.get("/api/incidents/:id/forecast", async (req, res) => {
   } catch (err) { return bad(res, 502, String(err.message || err)); }
   const top = f.probable_cashout_cells[0];
   const liveWd = events.some((e) => e.type === "withdrawal");
-  let risk_tier = tierOf(f.intensity ?? top.probability, liveWd);
-  // fusion cap: a hot burst with no suspicious peer steps down a tier (FP brake)
+  const intensity = f.intensity ?? top.probability;
   const maxFinal = Math.max(...(f.mule || []).map((n) => n.final), 0);
+  let risk_tier = tierOf(intensity, liveWd);
+  const capped_from = risk_tier;
+  // fusion cap: a hot burst with no suspicious peer steps down a tier (FP brake)
   if (!liveWd && risk_tier === "Red" && maxFinal < TIERS.mule_cap_red) risk_tier = "Amber";
   if (!liveWd && risk_tier === "Amber" && maxFinal < TIERS.mule_cap_amber) risk_tier = "Green";
   const complaint_clock_min = Math.round(
@@ -138,6 +140,10 @@ app.get("/api/incidents/:id/forecast", async (req, res) => {
     money_path: f.money_path, suspected_nodes: f.suspected_nodes,
     probable_cashout_cells: f.probable_cashout_cells,
     cashout_window_minutes: f.cashout_window_minutes,
+    excitation_breakdown: f.excitation_breakdown || [],
+    tier_detail: { intensity, red_cut: TIERS.red, amber_cut: TIERS.amber,
+      max_mule_final: maxFinal, live_withdrawal: liveWd,
+      capped_from: capped_from === risk_tier ? null : capped_from },
     evidence: (f.mule || []).slice(0, 3).flatMap((n) => (n.evidence || []).map((x) => `${n.id}: ${x}`)),
     recommended_action: risk_tier === "Green" ? "continue_monitoring" : "analyst_review_and_simulated_bank_step_up",
     model_version: f.model_version || MODEL_VERSION, human_review_required: true,

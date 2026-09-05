@@ -18,7 +18,7 @@ for name in ("demo_golden_hour.json", "fraud_multi_path.json", "fraud_withdrawal
     with open(os.path.join(ROOT, "data", name)) as f:
         fix = json.load(f)
     at = max(e["ts"] for e in fix["events"])
-    ranked, exc = score_cells(fix["events"], terms, fix.get("victim_lat", 28.6285),
+    ranked, exc, _ = score_cells(fix["events"], terms, fix.get("victim_lat", 28.6285),
                               fix.get("victim_lon", 77.2137), at, 1.5, 0.12)
     top = ranked[0]
     print(f"[{name}] top={top['h3_cell']} p={top['probability']} raw={top['raw']} exc={exc}")

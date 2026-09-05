@@ -42,13 +42,13 @@ def run_pipeline(incident, events, at_time=None):
     roots = [incident["src_hash"]]
     subgraph = build_khop(events, roots, depth=3)
     mule = score_nodes(subgraph, events, t0, CONFIG["weights"], at_time)
-    cells, exc = score_cells(
+    cells, exc, parts = score_cells(
         events, TERMINALS, incident.get("victim_lat", 28.6285),
         incident.get("victim_lon", 77.2137), at_time,
         CONFIG["sigma_km"], CONFIG["beta_per_min"])
     window = predict_window(exc, n_frontier=len(subgraph["path"]))
     return {"subgraph": subgraph, "mule": mule, "cells": cells,
-            "excitation": exc, "window": window,
+            "excitation": exc, "excitation_breakdown": parts, "window": window,
             "at_time": at_time, "model_version": MODEL_VERSION}
 
 
@@ -84,6 +84,7 @@ if FastAPI:
                 "money_path": out["subgraph"]["path"],
                 "suspected_nodes": [n["id"] for n in out["mule"][:3]],
                 "mule": out["mule"], "excitation": out["excitation"],
+                "excitation_breakdown": out["excitation_breakdown"],
                 "model_version": out["model_version"]}
 
     @app.get("/ml/federated/demo")

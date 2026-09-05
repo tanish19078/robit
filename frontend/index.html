@@ -13,8 +13,8 @@ header h1{font-size:17px;margin:0}
 .sim{background:#b71c1c;padding:2px 8px;border-radius:4px;font-size:11px;vertical-align:middle}
 .live{font-size:11px;color:#888}.live.on{color:#4caf50}
 header input{background:#1d2530;border:1px solid #39424f;color:#eee;border-radius:4px;padding:4px 8px}
-header button,.btn{background:#2b6cb0;border:0;color:#fff;border-radius:4px;padding:5px 12px;cursor:pointer}
-header button:hover,.btn:hover{background:#235a94}
+header button{background:#2b6cb0;border:0;color:#fff;border-radius:4px;padding:5px 12px;cursor:pointer}
+header button:hover{background:#235a94}
 .wrap{display:grid;grid-template-columns:260px 1fr;gap:12px;padding:12px 18px;max-width:1400px;margin:0 auto}
 aside{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;height:fit-content;position:sticky;top:12px}
 aside h3,.card h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:4px 0 8px}
@@ -28,15 +28,26 @@ main{display:grid;gap:12px;align-content:start}
 #tier{font-size:22px;font-weight:800;padding:10px 12px;border-radius:6px;background:#eceff1}
 #tier.Red{background:#ffcdd2;color:#7f0000}#tier.Amber{background:#ffe0b2;color:#7c4a00}
 #tier.Green{background:#c8e6c9;color:#1b5e20}#tier.Critical{background:#6a1b9a;color:#fff}
-.tsub{font-size:12px;color:var(--mut);margin-top:4px;font-weight:400}
+.tsub{font-size:12px;color:var(--mut);margin-top:4px}
+#story{font-size:14px;margin-top:8px;line-height:1.5}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:1000px){.wrap{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
 #map{height:380px;border:1px solid var(--line);border-radius:6px}
 #graphSvg{width:100%;height:230px;border:1px solid var(--line);border-radius:6px;background:#fafafa}
+#timelineSvg{width:100%;height:170px;border:1px solid var(--line);border-radius:6px;background:#fafafa}
 table{border-collapse:collapse;font-size:12px;width:100%}
 th,td{border-bottom:1px solid var(--line);padding:3px 8px;text-align:right}
 td:first-child,th:first-child{text-align:left}
 .ev{font-size:12px;margin:3px 0}.ev li{margin-bottom:2px}
+.why li{list-style:none;margin:4px 0;font-size:13px}.why{padding-left:4px}
+.ok{color:var(--green);font-weight:700}.no{color:var(--red);font-weight:700}.warn{color:var(--amber);font-weight:700}
+.scale{position:relative;height:26px;background:#eceff1;border-radius:5px;margin:8px 0 2px}
+.cut{position:absolute;top:-4px;bottom:-4px;width:2px;background:#888}
+.cut span{position:absolute;top:-16px;left:-14px;font-size:10px;color:var(--mut)}
+.needle{position:absolute;top:-6px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid #111;transform:translateX(-7px)}
+.cbar{height:12px;background:#e3e9f2;border-radius:3px;margin:2px 0 6px;position:relative}
+.cbar>i{display:block;height:100%;background:#2b6cb0;border-radius:3px}
+.cbar.hot>i{background:var(--red)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row button{background:#eef1f5;border:1px solid var(--line);border-radius:4px;padding:5px 12px;cursor:pointer}
 .row button:hover{background:#e2e8f0}.row button.primary{background:var(--red);border-color:var(--red);color:#fff}
@@ -61,17 +72,19 @@ select{background:#fff;border:1px solid var(--line);border-radius:4px;padding:5p
     <div id="queue"><div class="empty">press ⟳ queue</div></div>
   </aside>
   <main>
-    <div class="card"><div id="tier">no forecast yet</div><div id="tsub" class="tsub"></div></div>
+    <div class="card"><div id="tier">no forecast yet</div><div id="tsub" class="tsub"></div><div id="story"></div></div>
+    <div class="card"><h3>Why this verdict</h3><ul id="whyList" class="why"><li class="empty">run a forecast from the queue</li></ul>
+      <div class="scale" id="scaleBar" style="display:none"></div></div>
     <div class="grid2">
       <div class="card"><h3>Cash-out map (red = top cell)</h3><div id="map"></div></div>
-      <div class="card"><h3>Money graph (color = mule risk)</h3><svg id="graphSvg"></svg>
-        <h3>Mules — baseline + learned → final</h3><div id="mules"><div class="empty">run Forecast from the queue</div></div>
-      </div>
+      <div class="card"><h3>Money graph (color = mule risk, labels = ₹ + time)</h3><svg id="graphSvg"></svg>
+        <h3>What pushed the score (each transfer's share)</h3><svg id="timelineSvg"></svg></div>
     </div>
     <div class="grid2">
       <div class="card"><h3>Ranked cells</h3><div id="cells"><div class="empty">—</div></div>
-        <h3>Evidence</h3><ul id="evidence" class="ev"><li>—</li></ul></div>
-      <div class="card"><h3>Review — human approval required</h3>
+        <h3>Mules — baseline + learned → final</h3><div id="mules"><div class="empty">—</div></div></div>
+      <div class="card"><h3>Evidence</h3><ul id="evidence" class="ev"><li>—</li></ul>
+        <h3>Review — human approval required</h3>
         <div class="row">
           <button data-rev="acknowledge">Acknowledge</button>
           <button data-rev="escalate">Escalate</button>

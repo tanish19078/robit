@@ -72,14 +72,19 @@ app.post("/api/incidents", (req, res) => {
     incident_id, t0, amount, src_hash, channel,
     victim_lat: req.body.victim_lat ?? 28.6285,
     victim_lon: req.body.victim_lon ?? 77.2137,
+    wall_t0: Date.now(),
   };
   save();
   return res.status(201).json({ incident_id });
 });
 
-app.get("/api/incidents", (_req, res) =>
+app.get("/api/incidents", (_req, res) => {
+  const lastTier = {};
+  for (const a of db.alerts) lastTier[a.incident_id] = a.risk_tier;
   res.json({ incidents: Object.values(db.incidents).map((i) => ({
-    ...i, n_events: incidentEvents(i.incident_id).length })) }));
+    ...i, n_events: incidentEvents(i.incident_id).length,
+    last_tier: lastTier[i.incident_id] || null })) });
+});
 
 function addEvent(type, req, res) {
   const e = req.body || {};
@@ -135,6 +140,8 @@ app.get("/api/incidents/:id/forecast", async (req, res) => {
     recommended_action: risk_tier === "Green" ? "continue_monitoring" : "analyst_review_and_simulated_bank_step_up",
     model_version: f.model_version || MODEL_VERSION, human_review_required: true,
     status: "open", ts: new Date().toISOString(), complaint_clock_min,
+    alert_latency_ms: Date.now() - (inc.wall_t0 || Date.now()),
+    intensity: f.intensity ?? null,
   };
   db.alerts.push(alert);
   db.audit.push({ audit_id: `AUD-${db.seq}`, incident_id: inc.incident_id, alert_id: alert.alert_id,
@@ -196,8 +203,10 @@ app.get("/api/metrics", (_req, res) => {
   const byTier = {};
   for (const a of db.alerts) byTier[a.risk_tier] = (byTier[a.risk_tier] || 0) + 1;
   const last = db.alerts[db.alerts.length - 1];
+  const lats = db.alerts.map((a) => a.alert_latency_ms).filter((x) => x != null);
   res.json({ incidents: Object.keys(db.incidents).length, events: db.events.length,
     alerts_by_tier: byTier,
+    avg_latency_ms: lats.length ? Math.round(lats.reduce((s, x) => s + x, 0) / lats.length) : null,
     last_forecast: last ? { tier: last.risk_tier, top_cell: last.probable_cashout_cells[0], window: last.cashout_window_minutes } : null });
 });
 

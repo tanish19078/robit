@@ -74,6 +74,8 @@ def main():
         w = fc["cashout_window_minutes"]
         assert w["q10"] <= w["median"] <= w["q90"], w
         assert fc["human_review_required"] is True
+        assert isinstance(fc.get("alert_latency_ms"), int) and fc["alert_latency_ms"] >= 0
+        assert fc.get("intensity") is not None
         print("E2E fraud:", fc["risk_tier"], fc["probable_cashout_cells"][0], w, fc["money_path"])
 
         sc2, fc2 = replay(base, "fraud_withdrawal")
@@ -91,12 +93,16 @@ def main():
         _, m = api("GET", base + "/api/metrics")
         assert m["incidents"] == 4, m
         assert m["alerts_by_tier"] == {"Red": 1, "Critical": 1, "Green": 1, "Amber": 1}, m
+        assert isinstance(m.get("avg_latency_ms"), int), m
         _, lst = api("GET", base + "/api/incidents")
         got = {i["incident_id"]: i["n_events"] for i in lst["incidents"]}
         assert got == {sc["incident_id"]: len(sc["events"]),
                        sc2["incident_id"]: len(sc2["events"]),
                        sc3["incident_id"]: len(sc3["events"]),
                        sc4["incident_id"]: len(sc4["events"])}, got
+        tiers = {i["incident_id"]: i["last_tier"] for i in lst["incidents"]}
+        assert tiers == {sc["incident_id"]: "Red", sc2["incident_id"]: "Critical",
+                         sc3["incident_id"]: "Green", sc4["incident_id"]: "Amber"}, tiers
         print("E2E PASS")
     finally:
         gw.terminate()

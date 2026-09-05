@@ -21,6 +21,7 @@ try {
 } catch { /* first boot: empty store */ }
 let saveTimer = null;
 function save() {
+  // ponytail: debounced 200ms file write, last write lost on crash; Postgres + WAL when volume matters
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() =>
     writeFile(STORE_FILE, JSON.stringify(db)).catch((e) => console.error("store save failed:", e.message)), 200);
@@ -87,6 +88,7 @@ function addEvent(type, req, res) {
   const inc = db.incidents[e.incident_id];
   if (!inc) return bad(res, 404, "unknown incident_id");
   if (Date.parse(e.ts) < Date.parse(inc.t0)) return bad(res, 400, "ts before complaint t0");
+  if (db.events.some((x) => x.event_id === e.event_id)) return res.status(202).json({ duplicate: e.event_id });
   db.events.push({ ...e, type });
   save();
   pushSSE(e.incident_id, { kind: "event", event: e });
@@ -95,6 +97,7 @@ function addEvent(type, req, res) {
 app.post("/api/events/transactions", (req, res) => addEvent("transfer", req, res));
 app.post("/api/events/withdrawals", (req, res) => addEvent("withdrawal", req, res));
 
+// ponytail: O(n) scan per request, index by incident_id if events pass ~10k
 const incidentEvents = (id) => db.events.filter((e) => e.incident_id === id);
 
 app.get("/api/incidents/:id/graph", async (req, res) => {

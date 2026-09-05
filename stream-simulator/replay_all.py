@@ -1,13 +1,14 @@
-"""Batch demo: replay all scenarios into a gateway, print verdict table + confusion.
+"""Replay scenarios into a gateway, print verdict table + confusion.
 
-Positive = tier in (Red, Critical). Fraud fixtures must be positive with the
-true cell first; negatives must not be. Run:  python replay_all.py [--gateway URL]
-Targets a RUNNING gateway (e.g. hold_demo.py). Playwright-free judge view.
+Positive = tier in (Red, Critical). --scenario repeats (default: all 9),
+--speed paces events for live narration (0 = as fast as possible).
+Targets a RUNNING gateway (e.g. hold_demo.py).
 """
 
 import argparse
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 
@@ -30,12 +31,15 @@ def api(method, base, path, obj=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gateway", default="http://localhost:3000")
+    ap.add_argument("--scenario", action="append", default=None)
+    ap.add_argument("--speed", type=float, default=0.0)
     args = ap.parse_args()
     base, root = args.gateway, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
+    names = args.scenario or SCENARIOS
 
     print(f"{'incident':22} {'tier':9} {'top cell':18} {'window':14} verdict")
     tp = fp = tn = fn = 0
-    for name in SCENARIOS:
+    for name in names:
         with open(os.path.join(root, name + ".json")) as f:
             sc = json.load(f)
         inc = {k: sc[k] for k in ("incident_id", "t0", "amount", "src_hash", "channel") if k in sc}
@@ -51,6 +55,8 @@ def main():
             st, _ = api("POST", base, path, e)
             if st not in (202,):
                 print(f"{sc['incident_id']:22} ERROR event {e['event_id']} ({st})")
+            if args.speed > 0:
+                time.sleep(min(2.0, 60.0 / args.speed / max(1, len(sc["events"]))))
         st, fc = api("GET", base, f"/api/incidents/{sc['incident_id']}/forecast")
         if st != 200:
             print(f"{sc['incident_id']:22} ERROR forecast ({st})"); continue

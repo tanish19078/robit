@@ -10,7 +10,7 @@ Product context: `docs/PRAHARI_Final.md`. This file is the contract: services, s
 - [ ] Cell ranking over H3 res 8 + q10/med/q90 window
 - [ ] Dashboard: incident queue → graph → heatmap → evidence → ack/escalate/dismiss
 - [ ] `POST /api/actions/simulate` + audit row for every decision
-- [ ] `replay.py --scenario demo_golden_hour` drives the 3-min judge demo
+- [ ] `replay_all.py --scenario demo_golden_hour` drives the 3-min judge demo
 - [ ] `/api/metrics` shows latency, p@K, coverage from the same DB (no hardcoded numbers)
 
 Non-goals: Kafka/Flink, graph DB, full HTGT/GAttNHP, HE/SMPC, paid map tokens, gRPC/CAD connectors.
@@ -49,7 +49,7 @@ Terminals seed (`data/terminals.json`): `{terminal_id, type, lat, lon, h3_r8, ba
 ## 3. Module build order + owners
 
 ### M1 — Intake + replay [gateway + stream-simulator] — build FIRST
-Owner: backend person. Done when: `replay.py` creates incident + 15 events, all visible via
+Owner: backend person. Done when: `replay_all.py` creates incident + 15 events, all visible via
 `GET /api/incidents/:id/graph` (even if graph = raw edge list at first).
 
 ### M2 — Graph [ml-service/graph/] — k-hop only, never full-graph
@@ -103,7 +103,7 @@ Buttons must call ack/escalate/dismiss + simulate, then show audit id. If WSS br
 
 ## 6. Simulator + fixtures (judge demo lives here)
 
-`stream-simulator/replay.py --scenario demo_golden_hour --speed 20x`:
+`stream-simulator/replay_all.py --scenario demo_golden_hour --speed 20`:
 `10:00` complaint → `10:01` L1 → `10:03` L2 split → `10:06` new node near 4-terminal cluster.
 All output tagged `SIMULATION`. Keep `data/demo_golden_hour.json` as the frozen ground truth
 (true path, true cell, true cash-out ts) so `/api/metrics` can score the run live.

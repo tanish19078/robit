@@ -7,8 +7,7 @@ import math
 import os
 
 from graph.build import build_khop
-from mule.anomaly import FEATURES
-from mule.score import node_features
+from mule.score import FEATURES, node_features
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "..", "data")

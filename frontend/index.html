@@ -5,7 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>PRAHARI v0.1 — complaint-anchored cash-out forecast [SIMULATION]</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="styles.css" />
+<style>
+body{font-family:system-ui,sans-serif;margin:0}
+header{padding:8px 16px;background:#111;color:#eee}
+header h1{font-size:18px;margin:4px 0}
+.sim{background:#b71c1c;padding:2px 8px;border-radius:4px;font-size:12px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0}
+main{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 16px}
+#map{height:480px;border:1px solid #ccc}
+#tier{font-size:20px;font-weight:bold;padding:8px;border-radius:4px;background:#eee}
+#tier.Red{background:#ffcdd2}#tier.Amber{background:#ffe0b2}
+#tier.Green{background:#c8e6c9}#tier.Critical{background:#b71c1c;color:#fff}
+pre{background:#f5f5f5;padding:8px;margin:0 16px 16px;overflow:auto;max-height:300px}
+h2{font-size:14px;margin:12px 0 4px}
+#graphSvg{border:1px solid #ccc;background:#fafafa}
+table{border-collapse:collapse;font-size:12px}
+th,td{border:1px solid #ccc;padding:2px 8px;text-align:right}
+td:first-child,th:first-child{text-align:left}
+.dim{color:#666;font-size:12px}
+</style>
 </head>
 <body>
 <header>

@@ -28,7 +28,7 @@ try:
     assert wait("http://localhost:8000/ml/health"), "ml-service never came up (install: pip install -r ml-service/requirements.txt)"
     assert wait("http://localhost:3000/health"), "gateway never came up (install: cd gateway && npm install)"
     print("both services up; replaying demo scenario...")
-    rc = subprocess.call([sys.executable, os.path.join(ROOT, "stream-simulator", "replay.py"),
+    rc = subprocess.call([sys.executable, os.path.join(ROOT, "stream-simulator", "replay_all.py"),
                           "--scenario", "demo_golden_hour", "--speed", "20",
                           "--gateway", "http://localhost:3000"])
     print(f"replay exit={rc}")

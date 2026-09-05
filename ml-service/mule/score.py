@@ -5,9 +5,11 @@ import math
 from graph.build import parse_ts
 
 try:
-    from mule.anomaly import rank as anomaly_rank
-except ImportError:  # pragma: no cover - package layout fallback
-    from anomaly import rank as anomaly_rank
+    from sklearn.ensemble import IsolationForest
+except ImportError:
+    IsolationForest = None
+
+FEATURES = ["fan_out_vel", "fan_in_vel", "is_new", "hop_depth", "split_ratio", "terminal_conv"]
 
 WINDOW_MIN = 5.0
 A, B, C = 3.0, 2.0, -1.5
@@ -15,6 +17,16 @@ A, B, C = 3.0, 2.0, -1.5
 
 def _sigmoid(x):
     return 1.0 / (1.0 + math.exp(-x))
+
+
+def _anomaly_rank(feat_rows):
+    """0..1 within-incident peer ranks. Zeros if sklearn missing or <3 rows."""
+    if IsolationForest is None or len(feat_rows) < 3:
+        return [0.0 for _ in feat_rows]
+    X = [[r.get(k, 0.0) for k in FEATURES] for r in feat_rows]
+    scores = IsolationForest(n_estimators=50, contamination="auto", random_state=42).fit(X).score_samples(X)
+    lo, hi = min(scores), max(scores)
+    return [0.5 for _ in scores] if hi - lo < 1e-9 else [(hi - s) / (hi - lo) for s in scores]
 
 
 def node_features(subgraph, events, t0_str, at_time_str):
@@ -68,7 +80,7 @@ def score_nodes(subgraph, events, t0_str, weights, at_time_str):
     learned_all = [0.0] * len(order)
     pool_idx = [i for i, nid in enumerate(order) if nid not in roots]
     if pool_idx:
-        ranked = anomaly_rank([feat_rows[i] for i in pool_idx])
+        ranked = _anomaly_rank([feat_rows[i] for i in pool_idx])
         for i, r in zip(pool_idx, ranked):
             learned_all[i] = r
 

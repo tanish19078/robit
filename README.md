@@ -51,8 +51,7 @@ gateway/            Express :3000 — API, tiers, audit, file store, serves fron
 ml-service/         FastAPI :8000 — graph/ mule/ forecast/ federated/ (+ smoke + fed tests)
 frontend/           static dashboard — tier badge, SVG money-graph, mule table,
                     Leaflet heatmap, review buttons, metrics, federation panel
-stream-simulator/   replay.py (single scenario) · replay_all.py (9-report batch) ·
-                    e2e_check.py · check_osm.py
+stream-simulator/   replay_all.py (1 or 9 scenarios + verdict table) · e2e_check.py · check_osm.py
 data/               config.json (tiers + weights) · terminals.json (test fixture) ·
                     terminals_osm_delhi.json (265 real OSM ATMs, 35 H3 cells) ·
                     9 scenario fixtures (4 fraud, 4 negative, 1 capped) ·

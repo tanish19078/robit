@@ -67,6 +67,8 @@ def main():
             raise SystemExit("FAIL: pre-t0 event accepted")
         except urllib.error.HTTPError as he:
             assert he.code == 400, he.code
+        st, body = api("POST", base + "/api/events/transactions", sc["events"][0])
+        assert st == 202 and body.get("duplicate") == sc["events"][0]["event_id"], (st, body)
         assert fc["risk_tier"] == "Red", fc["risk_tier"]
         assert fc["probable_cashout_cells"][0]["h3_cell"] == sc["ground_truth"]["true_cell"], fc
         w = fc["cashout_window_minutes"]

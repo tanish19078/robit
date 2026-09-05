@@ -30,7 +30,7 @@ and note it as roadmap.
    with stub values before adding the model.
 2. Add/extend fixtures in `data/` + a unit test (schema reject, time-order, quantile order).
 3. Wire gateway → ml → frontend for that module; verify with
-   `replay.py --scenario demo_golden_hour` and `GET /api/metrics` before moving on.
+   `replay_all.py --scenario demo_golden_hour` and `GET /api/metrics` before moving on.
 4. If blocked >1h on PyG/Hawkes, ship the §8 fallback (NetworkX + decay formula + XGB/LR),
    keep the interface, and unblock the demo path.
 5. Paste measured `/api/metrics` into `docs/RESULTS.md`; never invent precision/latency numbers.

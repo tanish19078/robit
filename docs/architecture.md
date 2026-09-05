@@ -83,7 +83,7 @@ Forecast response = decision object (gateway persists + pushes WSS):
 
 ```text
 POST /api/incidents → 201 {incident_id}
-POST /api/events/transactions | /api/events/withdrawals → 202
+POST /api/events/transactions | /api/events/withdrawals | /api/events/attributes → 202 (type must match route)
 GET  /api/incidents/:id/graph        → M2 output
 GET  /api/incidents/:id/forecast     → M4 decision object
 GET  /api/incidents/:id/alerts

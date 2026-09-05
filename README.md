@@ -15,7 +15,7 @@ cd ml-service; pip install -r requirements.txt      # once
 cd ../gateway; npm install                           # once
 cd ..
 python hold_demo.py        # boots ml:8000 + gateway:3000, replays demo, stays up
-# open http://localhost:3000/ → Forecast
+# open http://localhost:3000/ → click an incident in the queue (auto-forecasts)
 ```
 
 Demo flow: complaint `10:00` → Layer-1 `10:01` → split `10:03` → forecast
@@ -49,8 +49,9 @@ Head-only demo — encoder federation is roadmap.
 ```text
 gateway/            Express :3000 — API, tiers, audit, file store, serves frontend/
 ml-service/         FastAPI :8000 — graph/ mule/ forecast/ federated/ (+ smoke + fed tests)
-frontend/           static dashboard — tier badge, SVG money-graph, mule table,
-                    Leaflet heatmap, review buttons, metrics, federation panel
+frontend/           static dashboard — queue sidebar with tier dots, tier banner
+                    with pipeline latency, SVG money-graph, mule table, Leaflet
+                    heatmap, live activity feed, review buttons, metrics
 stream-simulator/   replay_all.py (1 or 9 scenarios + verdict table) · e2e_check.py · check_osm.py
 data/               config.json (tiers + weights) · terminals.json (test fixture) ·
                     terminals_osm_delhi.json (265 real OSM ATMs, 35 H3 cells) ·
@@ -68,7 +69,7 @@ Swap terminal maps without code changes: `ML_TERMINALS` (ml-service) and
 
 ## API
 
-`POST /api/incidents` · `POST /api/events/transactions|withdrawals` ·
+`POST /api/incidents` · `POST /api/events/transactions|withdrawals|attributes` ·
 `GET /api/incidents` · `GET /api/incidents/:id/graph|forecast|alerts` ·
 `POST /api/alerts/:id/acknowledge|escalate|dismiss` ·
 `POST /api/actions/simulate` · `GET /api/terminals` ·

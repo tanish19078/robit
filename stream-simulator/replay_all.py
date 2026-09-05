@@ -15,6 +15,8 @@ import urllib.request
 SCENARIOS = ["demo_golden_hour", "fraud_multi_path", "fraud_uptown",
              "fraud_withdrawal", "normal_day", "salary_rent",
              "family_remittance", "business_payment", "repeat_vendor"]
+ROUTES = {"transfer": "/api/events/transactions", "withdrawal": "/api/events/withdrawals",
+          "shared_attribute": "/api/events/attributes"}
 
 
 def api(method, base, path, obj=None):
@@ -51,8 +53,7 @@ def main():
         elif st != 201:
             print(f"{sc['incident_id']:22} ERROR posting incident ({st})"); continue
         for e in sc["events"]:
-            path = "/api/events/withdrawals" if e["type"] == "withdrawal" else "/api/events/transactions"
-            st, _ = api("POST", base, path, e)
+            st, _ = api("POST", base, ROUTES[e["type"]], e)
             if st not in (202,):
                 print(f"{sc['incident_id']:22} ERROR event {e['event_id']} ({st})")
             if args.speed > 0:

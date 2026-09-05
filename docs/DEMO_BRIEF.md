@@ -19,12 +19,12 @@ blank but every panel still works (say so upfront — honesty scores).
 | Time | Do | Say |
 |---|---|---|
 | 0:00 | Point at header: SIMULATION tag | "Synthetic data, clearly labelled — real ledgers need authorization we don't claim." |
-| 0:20 | Incident dropdown → `INC-2026-00041`, press **Forecast** | "Complaint filed 10:00. Money splits across Layer-2 by 10:03." |
+| 0:20 | Click `INC-2026-00041` in the queue (auto-forecasts) | "Complaint filed 10:00. Money splits across Layer-2 by 10:03." |
 | 0:50 | Read the badge: **Red, 4/8/13 min**. Trace the red path on the SVG graph | "Burst-weighted excitation: four rapid transfers, not one big amount, is what fires Red." |
 | 1:20 | Map: red cluster of 4 terminals; cells ranked with probabilities | "Top cell holds the true cash-out in all 3 fraud replays — different cells each time." |
 | 1:50 | Evidence list + mule table (baseline + learned) | "Two independent signals must agree: hot burst AND a suspicious peer. That fusion is our false-positive brake." |
-| 2:10 | Switch incident → `INC-2026-00103` (₹2L single payment), Forecast → **Green** | "A lone large transfer stays Green — no burst, no mule. Old logic flagged this." |
-| 2:30 | Switch → `INC-2026-00105` (5 rapid vendor payments), Forecast → **Amber** | "Hot burst but a boring peer: stepped down to analyst review, not a bank alert." |
+| 2:10 | Click `INC-2026-00103` (₹2L single payment) → **Green** | "A lone large transfer stays Green — no burst, no mule. Old logic flagged this." |
+| 2:30 | Click `INC-2026-00105` (5 rapid vendor payments) → **Amber** | "Hot burst but a boring peer: stepped down to analyst review, not a bank alert." |
 | 2:50 | **Escalate** → **Simulate step_up** → show audit id | "Nothing freezes without a human. Every step is audited with model version." |
 
 ## The 9-report batch (FP story, 30 seconds)

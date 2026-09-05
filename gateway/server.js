@@ -90,6 +90,7 @@ function addEvent(type, req, res) {
   const e = req.body || {};
   const need = ["event_id", "incident_id", "ts", "src"];
   for (const k of need) if (!e[k]) return bad(res, 400, `${k} required`);
+  if (e.type && e.type !== type) return bad(res, 400, `type ${e.type} mismatches route ${type}`);
   const inc = db.incidents[e.incident_id];
   if (!inc) return bad(res, 404, "unknown incident_id");
   if (Date.parse(e.ts) < Date.parse(inc.t0)) return bad(res, 400, "ts before complaint t0");
@@ -101,6 +102,7 @@ function addEvent(type, req, res) {
 }
 app.post("/api/events/transactions", (req, res) => addEvent("transfer", req, res));
 app.post("/api/events/withdrawals", (req, res) => addEvent("withdrawal", req, res));
+app.post("/api/events/attributes", (req, res) => addEvent("shared_attribute", req, res));
 
 // ponytail: O(n) scan per request, index by incident_id if events pass ~10k
 const incidentEvents = (id) => db.events.filter((e) => e.incident_id === id);

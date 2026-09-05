@@ -38,8 +38,8 @@ def replay(base, name):
            "victim_lat": sc.get("victim_lat"), "victim_lon": sc.get("victim_lon")}
     api("POST", base + "/api/incidents", inc)
     for e in sc["events"]:
-        path = "/api/events/withdrawals" if e["type"] == "withdrawal" else "/api/events/transactions"
-        api("POST", base + path, e)
+        routes = {"transfer": "/transactions", "withdrawal": "/withdrawals", "shared_attribute": "/attributes"}
+        api("POST", base + "/api/events" + routes[e["type"]], e)
     _, fc = api("GET", base + f"/api/incidents/{sc['incident_id']}/forecast")
     return sc, fc
 

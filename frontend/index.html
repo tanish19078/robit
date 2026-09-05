@@ -3,72 +3,91 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PRAHARI v0.1 — complaint-anchored cash-out forecast [SIMULATION]</title>
+<title>PRAHARI — complaint-anchored cash-out forecast [SIMULATION]</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-body{font-family:system-ui,sans-serif;margin:0}
-header{padding:8px 16px;background:#111;color:#eee}
-header h1{font-size:18px;margin:4px 0}
-.sim{background:#b71c1c;padding:2px 8px;border-radius:4px;font-size:12px}
-.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0}
-main{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 16px}
-#map{height:480px;border:1px solid #ccc}
-#tier{font-size:20px;font-weight:bold;padding:8px;border-radius:4px;background:#eee}
-#tier.Red{background:#ffcdd2}#tier.Amber{background:#ffe0b2}
-#tier.Green{background:#c8e6c9}#tier.Critical{background:#b71c1c;color:#fff}
-pre{background:#f5f5f5;padding:8px;margin:0 16px 16px;overflow:auto;max-height:300px}
-h2{font-size:14px;margin:12px 0 4px}
-#graphSvg{border:1px solid #ccc;background:#fafafa}
-table{border-collapse:collapse;font-size:12px}
-th,td{border:1px solid #ccc;padding:2px 8px;text-align:right}
+:root{--bg:#0f1419;--card:#fff;--line:#e2e5ea;--mut:#67707c;--red:#c62828;--amber:#ef6c00;--green:#2e7d32}
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:#f3f5f7;color:#1c2330}
+header{background:var(--bg);color:#eee;padding:10px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header h1{font-size:17px;margin:0}
+.sim{background:#b71c1c;padding:2px 8px;border-radius:4px;font-size:11px;vertical-align:middle}
+.live{font-size:11px;color:#888}.live.on{color:#4caf50}
+header input{background:#1d2530;border:1px solid #39424f;color:#eee;border-radius:4px;padding:4px 8px}
+header button,.btn{background:#2b6cb0;border:0;color:#fff;border-radius:4px;padding:5px 12px;cursor:pointer}
+header button:hover,.btn:hover{background:#235a94}
+.wrap{display:grid;grid-template-columns:260px 1fr;gap:12px;padding:12px 18px;max-width:1400px;margin:0 auto}
+aside{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;height:fit-content;position:sticky;top:12px}
+aside h3,.card h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:4px 0 8px}
+.qitem{display:flex;gap:8px;align-items:center;padding:7px 8px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+.qitem:hover{background:#f0f4f8}.qitem.sel{background:#e8f0fe;border-color:#b6d0f5}
+.dot{width:10px;height:10px;border-radius:50%;background:#bbb;flex:none}
+.dot.Red{background:var(--red)}.dot.Amber{background:var(--amber)}.dot.Green{background:var(--green)}.dot.Critical{background:#6a1b9a}
+.qid{font-size:12px;font-weight:600}.qsub{font-size:11px;color:var(--mut)}
+main{display:grid;gap:12px;align-content:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+#tier{font-size:22px;font-weight:800;padding:10px 12px;border-radius:6px;background:#eceff1}
+#tier.Red{background:#ffcdd2;color:#7f0000}#tier.Amber{background:#ffe0b2;color:#7c4a00}
+#tier.Green{background:#c8e6c9;color:#1b5e20}#tier.Critical{background:#6a1b9a;color:#fff}
+.tsub{font-size:12px;color:var(--mut);margin-top:4px;font-weight:400}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:1000px){.wrap{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+#map{height:380px;border:1px solid var(--line);border-radius:6px}
+#graphSvg{width:100%;height:230px;border:1px solid var(--line);border-radius:6px;background:#fafafa}
+table{border-collapse:collapse;font-size:12px;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:3px 8px;text-align:right}
 td:first-child,th:first-child{text-align:left}
-.dim{color:#666;font-size:12px}
+.ev{font-size:12px;margin:3px 0}.ev li{margin-bottom:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row button{background:#eef1f5;border:1px solid var(--line);border-radius:4px;padding:5px 12px;cursor:pointer}
+.row button:hover{background:#e2e8f0}.row button.primary{background:var(--red);border-color:var(--red);color:#fff}
+select{background:#fff;border:1px solid var(--line);border-radius:4px;padding:5px}
+#feed{font-size:12px;max-height:120px;overflow:auto;margin:6px 0 0;padding-left:18px;color:#374151}
+#toasts{position:fixed;bottom:14px;right:14px;display:flex;flex-direction:column;gap:8px}
+.toast{background:#323232;color:#fff;padding:8px 14px;border-radius:6px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.empty{color:var(--mut);font-size:13px}
 </style>
 </head>
 <body>
 <header>
-  <h1>PRAHARI <span class="sim">SIMULATION v0.1</span></h1>
-  <div class="controls">
-    <label>Gateway <input id="gw" value="http://localhost:3000" size="22" /></label>
-    <label>Incident
-      <select id="incSel"></select>
-      <input id="inc" value="INC-2026-00041" size="16" />
-    </label>
-    <button id="bRefreshInc">⟳ incidents</button>
-    <button id="bForecast">Forecast</button>
-    <button id="bMetrics">Metrics</button>
-    <button id="bFed">Federation demo</button>
-  </div>
+  <h1>PRAHARI <span class="sim">SIMULATION</span> <span id="live" class="live">● connecting</span></h1>
+  <label>Gateway <input id="gw" value="http://localhost:3000" size="22" /></label>
+  <button id="bRefreshInc">⟳ queue</button>
+  <button id="bMetrics">Metrics</button>
+  <button id="bFed">Federation</button>
 </header>
-<main>
-  <section class="left">
-    <div id="tier">no forecast yet</div>
-    <h2>Money path</h2><div id="path">—</div>
-    <h2>Money graph (hop columns, color = mule risk)</h2>
-    <svg id="graphSvg" width="100%" height="220"></svg>
-    <h2>Mule table (baseline + learned → final)</h2><div id="mules">—</div>
-    <h2>Cells</h2><div id="cells">—</div>
-    <h2>Evidence</h2><ul id="evidence"><li>—</li></ul>
-    <h2>Review (human approval required)</h2>
-    <div class="controls">
-      <button data-rev="acknowledge">Acknowledge</button>
-      <button data-rev="escalate">Escalate</button>
-      <button data-rev="dismiss">Dismiss</button>
-      <select id="simAction">
-        <option value="step_up">step_up</option>
-        <option value="hold_request">hold_request</option>
-        <option value="patrol_notify">patrol_notify</option>
-      </select>
-      <button id="bSim">Simulate action</button>
+<div class="wrap">
+  <aside>
+    <h3>Incident queue</h3>
+    <div id="queue"><div class="empty">press ⟳ queue</div></div>
+  </aside>
+  <main>
+    <div class="card"><div id="tier">no forecast yet</div><div id="tsub" class="tsub"></div></div>
+    <div class="grid2">
+      <div class="card"><h3>Cash-out map (red = top cell)</h3><div id="map"></div></div>
+      <div class="card"><h3>Money graph (color = mule risk)</h3><svg id="graphSvg"></svg>
+        <h3>Mules — baseline + learned → final</h3><div id="mules"><div class="empty">run Forecast from the queue</div></div>
+      </div>
     </div>
-    <div id="reviewOut">—</div>
-  </section>
-  <section class="right">
-    <div id="map"></div>
-    <h2>Metrics</h2><div id="metrics">—</div>
-  </section>
-</main>
-<h2>Raw</h2><pre id="raw">—</pre>
+    <div class="grid2">
+      <div class="card"><h3>Ranked cells</h3><div id="cells"><div class="empty">—</div></div>
+        <h3>Evidence</h3><ul id="evidence" class="ev"><li>—</li></ul></div>
+      <div class="card"><h3>Review — human approval required</h3>
+        <div class="row">
+          <button data-rev="acknowledge">Acknowledge</button>
+          <button data-rev="escalate">Escalate</button>
+          <button data-rev="dismiss">Dismiss</button>
+          <select id="simAction"><option value="step_up">step_up</option><option value="hold_request">hold_request</option><option value="patrol_notify">patrol_notify</option></select>
+          <button id="bSim" class="primary">Simulate action</button>
+        </div>
+        <div id="reviewOut" class="tsub">—</div>
+        <h3>Live activity</h3><ul id="feed"></ul>
+      </div>
+    </div>
+    <div class="card"><h3>Metrics</h3><div id="metrics"><div class="empty">press Metrics</div></div></div>
+    <div class="card"><h3>Raw</h3><pre id="raw">—</pre></div>
+  </main>
+</div>
+<div id="toasts"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="app.js"></script>
 </body>

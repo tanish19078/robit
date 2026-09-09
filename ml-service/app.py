@@ -22,7 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def load_defaults():
-    with open(os.path.join(HERE, "..", "data", "config.json")) as f:
+    with open(os.environ.get("ML_CONFIG", os.path.join(HERE, "..", "data", "config.json"))) as f:
         config = json.load(f)
     term_file = os.environ.get("ML_TERMINALS", os.path.join(HERE, "..", "data", "terminals.json"))
     with open(term_file) as f:

@@ -1,0 +1,8 @@
+node_modules/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+data/gateway_store.json
+data/tmp_*.json
+.env

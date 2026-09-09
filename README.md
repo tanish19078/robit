@@ -16,7 +16,9 @@ cd ../gateway; npm install                           # once
 cd ..
 python hold_demo.py        # boots ml:8000 + gateway:3000, replays demo, stays up
 # open http://localhost:3000/ → click an incident in the queue (auto-forecasts)
+# fresh/empty deploy? press "Load demo data" — or: curl -XPOST localhost:3000/api/demo/seed
 ```
+Deploy anywhere: `docs/DEPLOY.md` (compose / processes / PaaS).
 
 Demo flow: complaint `10:00` → Layer-1 `10:01` → split `10:03` → forecast
 **Red, top cell p=0.69, window 4/8/13** → analyst ack/escalate → simulated
@@ -63,16 +65,16 @@ docs/               PRAHARI_Final.md · RESULTS.md · DATA_STRATEGY.md ·
 hold_demo.py        one-command local stack
 ```
 
-Swap terminal maps without code changes: `ML_TERMINALS` (ml-service) and
-`TERMINALS_FILE` (gateway) env paths. Other env: `PORT`, `ML_URL`,
-`MODEL_VERSION`, `STORE_FILE`.
+Swap terminal maps without code changes: `ML_TERMINALS` + `ML_CONFIG` (ml-service),
+`TERMINALS_FILE` + `DATA_DIR` (gateway). Other env: `PORT`, `ML_URL`,
+`MODEL_VERSION`, `STORE_FILE`, `FRONTEND_DIR`. Full list: `docs/DEPLOY.md`.
 
 ## API
 
 `POST /api/incidents` · `POST /api/events/transactions|withdrawals|attributes` ·
 `GET /api/incidents` · `GET /api/incidents/:id/graph|forecast|alerts` ·
 `POST /api/alerts/:id/acknowledge|escalate|dismiss` ·
-`POST /api/actions/simulate` · `GET /api/terminals` ·
+`POST /api/actions/simulate` · `POST /api/demo/seed` · `GET /api/terminals` ·
 `GET /api/federated/demo` · `GET /api/metrics` · `GET /api/stream/:id` (SSE).
 
 ## Tests (all must pass)

@@ -1,4 +1,7 @@
-"""Boot ml:8000 + gateway:3000, replay the demo, stay up until Ctrl+C."""
+"""Boot ml:8000 + gateway:3000, replay the demo, stay up until Ctrl+C.
+
+Builds the React frontend automatically if dist/ is missing.
+"""
 
 import os
 import subprocess
@@ -7,6 +10,7 @@ import time
 import urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+FRONTEND = os.path.join(ROOT, "frontend")
 
 
 def wait(url, tries=60):
@@ -18,6 +22,17 @@ def wait(url, tries=60):
         except Exception:
             time.sleep(0.5)
     return False
+
+
+# Build frontend if dist/ doesn't exist
+dist = os.path.join(FRONTEND, "dist")
+if not os.path.isdir(dist):
+    print("frontend/dist/ not found — building React app...")
+    subprocess.check_call(["npm", "install"], cwd=FRONTEND)
+    subprocess.check_call(["npm", "run", "build"], cwd=FRONTEND)
+    print("frontend built successfully")
+else:
+    print("frontend/dist/ exists — skipping build")
 
 
 ml = subprocess.Popen([sys.executable, "-m", "uvicorn", "app:app", "--port", "8000"],
@@ -33,7 +48,8 @@ try:
                           "--gateway", "http://localhost:3000"])
     print(f"replay exit={rc}")
     print("=" * 60)
-    print("READY — open http://localhost:3000/ and press Forecast")
+    print("READY — open http://localhost:3000/")
+    print("Click 'Load Demo Data' on the landing page, or go to /incidents")
     print("Holding stack up. Press Ctrl+C here to stop everything.")
     print("=" * 60)
     while True:

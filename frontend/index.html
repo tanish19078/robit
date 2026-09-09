@@ -1,128 +1,13 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PRAHARI — complaint-anchored cash-out forecast [SIMULATION]</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-:root{--bg:#0b0f14;--panel:#141b25;--panel2:#1a2230;--line:#26303f;--txt:#e8edf3;--mut:#8b95a5;--acc:#4da3ff;--red:#ff5a5a;--amber:#ffa63d;--green:#4ade80;--purple:#c084fc}
-*{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;background:var(--bg);color:var(--txt);font-size:14px}
-header{background:#080c11;border-bottom:1px solid var(--line);padding:10px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:500}
-header h1{font-size:16px;margin:0;letter-spacing:.04em}
-.sim{background:#b71c1c;padding:2px 8px;border-radius:4px;font-size:10px;vertical-align:middle;letter-spacing:.08em}
-.live{font-size:11px;color:#5b6572}.live.on{color:var(--green)}
-header input{background:#1d2530;border:1px solid #39424f;color:var(--txt);border-radius:5px;padding:5px 9px}
-header button{background:#1f6feb;border:0;color:#fff;border-radius:5px;padding:6px 13px;cursor:pointer;font-size:13px}
-header button:hover{background:#388bfd}
-header button.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
-.howto{max-width:1400px;margin:12px auto 0;padding:10px 14px;background:#101825;border:1px dashed #33507a;border-radius:8px;font-size:13px;color:#b9c6d8}
-.howto b{color:var(--txt)}
-.wrap{display:grid;grid-template-columns:250px 1fr;gap:12px;padding:12px 20px;max-width:1400px;margin:0 auto}
-aside{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;height:fit-content;position:sticky;top:64px}
-main{display:grid;gap:12px;align-content:start}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-.card h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:2px 0 10px}
-.qitem{display:flex;gap:9px;align-items:center;padding:8px;border-radius:7px;cursor:pointer;border:1px solid transparent}
-.qitem:hover{background:var(--panel2)}.qitem.sel{background:#16283f;border-color:#2b4d77}
-.dot{width:10px;height:10px;border-radius:50%;background:#4b5563;flex:none}
-.dot.Red{background:var(--red)}.dot.Amber{background:var(--amber)}.dot.Green{background:var(--green)}.dot.Critical{background:var(--purple)}
-.qid{font-size:12px;font-weight:650}.qsub{font-size:11px;color:var(--mut)}
-#tier{font-size:24px;font-weight:800;padding:12px 14px;border-radius:8px;background:#232c3b}
-#tier.Red{background:#4c1215;color:#ff8a8a}#tier.Amber{background:#4a2c10;color:#ffb86b}
-#tier.Green{background:#0f3d1f;color:#7bf0a4}#tier.Critical{background:#3b1470;color:#d8b4fe}
-.tsub{font-size:12px;color:var(--mut);margin-top:6px}
-#story{font-size:14.5px;margin-top:10px;line-height:1.55}
-.big{font-size:20px;font-weight:800}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:1000px){.wrap{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}aside{position:static}}
-#map{height:380px;border:1px solid var(--line);border-radius:8px;background:#0e141d}
-#graphSvg,#timelineSvg{width:100%;border:1px solid var(--line);border-radius:8px;background:#0e141d}
-#graphSvg{height:250px}#timelineSvg{height:180px}
-table{border-collapse:collapse;font-size:12px;width:100%}
-th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:right}
-td:first-child,th:first-child{text-align:left}th{color:var(--mut);font-weight:600}
-.ev{font-size:12.5px;margin:3px 0}.ev li{margin-bottom:3px}
-.why{padding-left:4px;margin:4px 0}.why li{list-style:none;margin:6px 0;font-size:13.5px}
-.ok{color:var(--green);font-weight:700}.no{color:var(--red);font-weight:700}.warn{color:var(--amber);font-weight:700}
-.scale{position:relative;height:26px;background:#232c3b;border-radius:5px;margin:20px 0 4px}
-.cut{position:absolute;top:-4px;bottom:-4px;width:2px;background:#6b7686}
-.cut span{position:absolute;top:-17px;left:-16px;font-size:10px;color:var(--mut);white-space:nowrap}
-.needle{position:absolute;top:-7px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:11px solid #fff;transform:translateX(-7px)}
-.cbar{height:12px;background:#232c3b;border-radius:3px;margin:2px 0 8px}
-.cbar>i{display:block;height:100%;background:var(--acc);border-radius:3px}
-.cbar.hot>i{background:var(--red)}
-.flow{list-style:none;margin:0;padding:0}
-.flow li{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:baseline}
-.flow li:last-child{border-bottom:0}
-.ft{font-variant-numeric:tabular-nums;color:var(--mut);flex:none;width:44px}
-.famt{font-weight:700;flex:none}
-.fwd{color:var(--red);font-weight:700}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.row button{background:#232c3b;border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:6px 13px;cursor:pointer}
-.row button:hover{background:#2c3748}.row button.primary{background:var(--red);border-color:var(--red);color:#fff}
-select{background:#1d2530;border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:6px}
-#feed{font-size:12px;max-height:120px;overflow:auto;margin:6px 0 0;padding-left:18px;color:#9aa7b8}
-#toasts{position:fixed;bottom:14px;right:14px;display:flex;flex-direction:column;gap:8px;z-index:600}
-.toast{background:#e8edf3;color:#111;padding:8px 14px;border-radius:6px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.5)}
-.empty{color:var(--mut);font-size:13px}
-details summary{cursor:pointer;color:var(--mut);font-size:12px}
-pre{background:#0b0f14;border:1px solid var(--line);padding:8px;border-radius:6px;overflow:auto;max-height:280px;font-size:11.5px}
-.casegrid{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;margin-top:8px}
-.casegrid b{display:block;font-size:16px}
-.casegrid span{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
-</style>
-</head>
-<body>
-<header>
-  <h1>PRAHARI <span class="sim">SIMULATION</span> <span id="live" class="live">● connecting</span></h1>
-  <label>Gateway <input id="gw" value="http://localhost:3000" size="22" /></label>
-  <button id="bRefreshInc">⟳ queue</button>
-  <button id="bMetrics" class="ghost">Metrics</button>
-  <button id="bFed" class="ghost">Federation</button>
-</header>
-<div class="howto" id="howto">How to read this: <b>1.</b> pick a complaint on the left → <b>2.</b> read the verdict and <i>why</i> → <b>3.</b> check the map + money trail → <b>4.</b> approve or dismiss. Nothing moves money — every action is simulated and audited. <a href="#" id="hideHow" style="color:var(--acc)">hide</a></div>
-<div class="wrap">
-  <aside>
-    <h3>Complaint queue</h3>
-    <div id="queue"><div class="empty">press ⟳ queue</div></div>
-  </aside>
-  <main>
-    <div class="card">
-      <h3>Case file</h3>
-      <div class="casegrid" id="caseMeta"><div class="empty">select a complaint</div></div>
-    </div>
-    <div class="card"><div id="tier">no forecast yet</div><div id="tsub" class="tsub"></div><div id="story"></div></div>
-    <div class="card"><h3>Why this verdict — the rule trace</h3><ul id="whyList" class="why"><li class="empty">run a forecast from the queue</li></ul>
-      <div class="scale" id="scaleBar" style="display:none"></div></div>
-    <div class="card"><h3>What happened, in order</h3><ul id="flowList" class="flow"><li class="empty">—</li></ul></div>
-    <div class="grid2">
-      <div class="card"><h3>Cash-out map — red cluster is the forecast</h3><div id="map"></div></div>
-      <div class="card"><h3>Money trail — color is mule risk, labels are ₹ + time</h3><svg id="graphSvg"></svg>
-        <h3>Each transfer's share of the danger score (hover bars)</h3><svg id="timelineSvg"></svg></div>
-    </div>
-    <div class="grid2">
-      <div class="card"><h3>Suspect ranking</h3><div id="mules"><div class="empty">—</div></div>
-        <h3>Ranked areas</h3><div id="cells"><div class="empty">—</div></div></div>
-      <div class="card"><h3>Evidence</h3><ul id="evidence" class="ev"><li>—</li></ul>
-        <h3>Review — a human must approve</h3>
-        <div class="row">
-          <button data-rev="acknowledge">Acknowledge</button>
-          <button data-rev="escalate">Escalate</button>
-          <button data-rev="dismiss">Dismiss</button>
-          <select id="simAction"><option value="step_up">step_up</option><option value="hold_request">hold_request</option><option value="patrol_notify">patrol_notify</option></select>
-          <button id="bSim" class="primary">Simulate action</button>
-        </div>
-        <div id="reviewOut" class="tsub">—</div>
-        <h3>Live activity</h3><ul id="feed"></ul>
-      </div>
-    </div>
-    <div class="card"><h3>Metrics</h3><div id="metrics"><div class="empty">press Metrics</div></div></div>
-    <div class="card"><details><summary>Raw alert JSON (receipt)</summary><pre id="raw">—</pre></details></div>
-  </main>
-</div>
-<div id="toasts"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PRAHARI — Predictive Cash-Out Interception [SIMULATION]</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

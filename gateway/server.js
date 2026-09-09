@@ -254,8 +254,8 @@ app.get("/api/metrics", (_req, res) => {
     last_forecast: last ? { tier: last.risk_tier, top_cell: last.probable_cashout_cells[0], window: last.cashout_window_minutes } : null });
 });
 
-// dashboard served same-origin by the gateway
-const FRONTEND_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "frontend");
+// dashboard served same-origin by the gateway (Vite builds to frontend/dist/)
+const FRONTEND_DIR = process.env.FRONTEND_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "frontend", "dist");
 app.use(express.static(FRONTEND_DIR));
 
 // SSE live feed (dependency-free WSS substitute for v0.1)
@@ -267,4 +267,11 @@ app.get("/api/stream/:id", (req, res) => {
   req.on("close", () => sseClients.get(id)?.delete(res));
 });
 
-app.listen(PORT, () => console.log(`gateway :${PORT} (ml=${ML_URL})`));
+// SPA catch-all: serve index.html for client-side routes (React Router)
+app.get("*", (req, res) => {
+  if (!req.path.startsWith("/api/")) {
+    res.sendFile(path.join(FRONTEND_DIR, "index.html"));
+  }
+});
+
+app.listen(PORT, () => console.log(`gateway :${PORT} (ml=${ML_URL}) frontend=${FRONTEND_DIR}`));

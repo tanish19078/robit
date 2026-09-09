@@ -1,5 +1,5 @@
 /* Static dashboard: gateway REST + SSE. No build step. */
-let map, layer, lastAlert = null, lastMule = {}, sel = null, es = null;
+let map, layer, lastAlert = null, lastMule = {}, sel = null, es = null, incidentsById = {};
 const $ = (id) => document.getElementById(id);
 const gw = () => $("gw").value.replace(/\/$/, "");
 
@@ -16,9 +16,10 @@ function toast(msg) {
   $("toasts").appendChild(d);
   setTimeout(() => d.remove(), 3500);
 }
-function riskColor(v) { return v > 0.65 ? "#c62828" : v >= 0.35 ? "#ef6c00" : "#2e7d32"; }
+function riskColor(v) { return v > 0.65 ? "#ff5a5a" : v >= 0.35 ? "#ffa63d" : "#4ade80"; }
 function inr(n) { return "₹" + Number(n || 0).toLocaleString("en-IN"); }
 function hhmm(ts) { return (ts || "").slice(11, 16); }
+function short(id) { return String(id).replace("acct_hash_", "acct ").replace("victim_hash", "victim"); }
 function feed(msg) {
   const li = document.createElement("li");
   li.textContent = msg;
@@ -27,13 +28,24 @@ function feed(msg) {
   while (f.children.length > 8) f.lastChild.remove();
 }
 
-/* ---- queue ---- */
+/* ---- queue + case file ---- */
 async function loadQueue() {
   try {
     const { incidents } = await jget("/api/incidents");
+    incidentsById = Object.fromEntries(incidents.map((i) => [i.incident_id, i]));
     const q = $("queue");
     q.innerHTML = "";
-    if (!incidents.length) q.innerHTML = '<div class="empty">no incidents — run replay_all.py</div>';
+    if (!incidents.length) q.innerHTML = '<div class="empty">no complaints yet</div><div class="row" style="margin-top:8px"><button id="bSeed">Load demo data</button></div>';
+    const bs = $("bSeed");
+    if (bs) bs.onclick = async () => {
+      try {
+        bs.textContent = "loading…";
+        const r = await jpost("/api/demo/seed", {});
+        toast(`seeded ${r.seeded.filter((s) => !s.error).length} complaints`);
+        await loadQueue();
+        if (sel) doForecast().catch((e) => toast(String(e)));
+      } catch (e) { toast(String(e)); bs.textContent = "Load demo data"; }
+    };
     if (!sel && incidents.length) { sel = incidents[0].incident_id; connectSSE(); }
     for (const i of incidents) {
       const d = document.createElement("div");
@@ -42,11 +54,23 @@ async function loadQueue() {
       d.onclick = () => select(i.incident_id, true);
       q.appendChild(d);
     }
+    renderCaseMeta();
   } catch (e) { toast(String(e)); }
+}
+function renderCaseMeta() {
+  const i = incidentsById[sel];
+  if (!i) { $("caseMeta").innerHTML = '<div class="empty">select a complaint</div>'; return; }
+  $("caseMeta").innerHTML =
+    `<div><span>complaint</span><b>${i.incident_id}</b></div>` +
+    `<div><span>amount</span><b>${inr(i.amount)}</b></div>` +
+    `<div><span>channel</span><b>${i.channel || "—"}</b></div>` +
+    `<div><span>filed</span><b>${hhmm(i.t0)} · ${String(i.t0).slice(0, 10)}</b></div>` +
+    `<div><span>events</span><b>${i.n_events}</b></div>`;
 }
 function select(id, auto) {
   sel = id;
   document.querySelectorAll(".qitem").forEach((el) => el.classList.toggle("sel", el.textContent.includes(id)));
+  renderCaseMeta();
   connectSSE();
   if (auto) doForecast().catch((e) => toast(String(e)));
 }
@@ -63,14 +87,14 @@ async function drawTerminals(topCell) {
     const { terminals } = await jget("/api/terminals");
     for (const t of terminals) {
       const hot = topCell && t.h3_r8 === topCell;
-      L.circleMarker([t.lat, t.lon], { radius: hot ? 10 : 5, color: hot ? "red" : "blue" })
+      L.circleMarker([t.lat, t.lon], { radius: hot ? 10 : 5, color: hot ? "red" : "#4da3ff" })
         .bindPopup(`${t.terminal_id} (${t.type})<br>${t.h3_r8}`).addTo(layer);
     }
   } catch { /* map still works without terminal feed */ }
 }
 function drawGraph(graph) {
   const svg = $("graphSvg");
-  const W = svg.clientWidth || 520, H = 230;
+  const W = svg.clientWidth || 520, H = 250;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   svg.innerHTML = "";
   if (!graph || !graph.nodes.length) return;
@@ -80,7 +104,7 @@ function drawGraph(graph) {
   const pos = {};
   hops.forEach((h, ci) => {
     byHop[h].forEach((n, ri, col) => {
-      pos[n.id] = { x: 50 + (ci * (W - 100)) / Math.max(1, hops.length - 1), y: 30 + (ri * (H - 60)) / Math.max(1, col.length - 1 || 1) };
+      pos[n.id] = { x: 56 + (ci * (W - 112)) / Math.max(1, hops.length - 1), y: 34 + (ri * (H - 76)) / Math.max(1, col.length - 1 || 1) };
     });
   });
   const NS = "http://www.w3.org/2000/svg";
@@ -88,7 +112,7 @@ function drawGraph(graph) {
     const t = document.createElementNS(NS, "text");
     t.setAttribute("x", x); t.setAttribute("y", y);
     t.setAttribute("text-anchor", "middle"); t.setAttribute("font-size", size);
-    if (fill) t.setAttribute("fill", fill);
+    t.setAttribute("fill", fill || "#c6cfdb");
     t.textContent = s; svg.appendChild(t);
   };
   for (const e of graph.edges || []) {
@@ -97,31 +121,31 @@ function drawGraph(graph) {
     const l = document.createElementNS(NS, "line");
     l.setAttribute("x1", a.x); l.setAttribute("y1", a.y);
     l.setAttribute("x2", b.x); l.setAttribute("y2", b.y);
-    l.setAttribute("stroke", e.type === "withdrawal" ? "#c62828" : e.type === "shared_attribute" ? "#757575" : "#1565c0");
+    l.setAttribute("stroke", e.type === "withdrawal" ? "#ff5a5a" : e.type === "shared_attribute" ? "#6b7686" : "#4da3ff");
     l.setAttribute("stroke-width", "2");
     if (e.type === "shared_attribute") l.setAttribute("stroke-dasharray", "5,4");
     svg.appendChild(l);
-    if (e.type !== "shared_attribute")
-      txt((a.x + b.x) / 2, (a.y + b.y) / 2 - 6, `${inr(e.amount)} · ${hhmm(e.ts)}`, "9", "#374151");
+    if (e.type !== "shared_attribute") txt((a.x + b.x) / 2, (a.y + b.y) / 2 - 7, `${inr(e.amount)} · ${hhmm(e.ts)}`, "9.5", "#8b95a5");
   }
   for (const n of graph.nodes) {
     const p = pos[n.id], s = lastMule[n.id] || 0;
     const c = document.createElementNS(NS, "circle");
-    c.setAttribute("cx", p.x); c.setAttribute("cy", p.y); c.setAttribute("r", "16");
-    c.setAttribute("fill", riskColor(s)); c.setAttribute("opacity", "0.85");
+    c.setAttribute("cx", p.x); c.setAttribute("cy", p.y); c.setAttribute("r", "17");
+    c.setAttribute("fill", riskColor(s)); c.setAttribute("opacity", "0.9");
     svg.appendChild(c);
-    txt(p.x, p.y + 32, n.id.replace("acct_hash_", "a").replace("victim_hash", "victim").slice(0, 12), "10");
-    txt(p.x, p.y + 4, s.toFixed(2), "10", "#fff");
+    txt(p.x, p.y + 36, short(n.id).slice(0, 14), "10");
+    txt(p.x, p.y + 5, s.toFixed(2), "10", "#0b0f14");
   }
 }
 
-/* ---- explanation: story, why, timeline ---- */
+/* ---- explanation: story, why, timeline, flow ---- */
 function renderStory(a, graph) {
   const edges = (graph?.edges || []).filter((e) => e.type === "transfer");
   if (!edges.length) { $("story").textContent = ""; return; }
   const first = edges.reduce((m, e) => (e.ts < m.ts ? e : m), edges[0]);
+  const last = edges.reduce((m, e) => (e.ts > m.ts ? e.ts : m), edges[0].ts);
   const dsts = new Set(edges.map((e) => e.dst));
-  const span = Math.round((Date.parse(edges.reduce((m, e) => (e.ts > m ? e.ts : m), edges[0].ts)) - Date.parse(first.ts)) / 60000);
+  const span = Math.round((Date.parse(last) - Date.parse(first.ts)) / 60000);
   const top = a.probable_cashout_cells[0];
   $("story").textContent =
     `${inr(first.amount)} left the victim account at ${hhmm(first.ts)}, ` +
@@ -154,7 +178,7 @@ function renderWhy(a) {
 }
 function renderTimeline(a) {
   const svg = $("timelineSvg");
-  const W = svg.clientWidth || 520, H = 170;
+  const W = svg.clientWidth || 520, H = 180;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   svg.innerHTML = "";
   const parts = a.excitation_breakdown || [];
@@ -164,39 +188,50 @@ function renderTimeline(a) {
   const base = Date.parse(parts.reduce((m, p) => (p.ts < m ? p.ts : m), parts[0].ts));
   const tmax = Math.max(...parts.map((p) => (Date.parse(p.ts) - base) / 60000), 1);
   const ymax = Math.max(t.red_cut || 2, ...parts.map((p) => p.contribution)) * 1.2;
-  const X = (ts) => 40 + ((Date.parse(ts) - base) / 60000 / tmax) * (W - 60);
-  const Y = (v) => H - 24 - (v / ymax) * (H - 50);
-  const line = (x1, y1, x2, y2, color, dash, w) => {
+  const X = (ts) => 44 + ((Date.parse(ts) - base) / 60000 / tmax) * (W - 64);
+  const Y = (v) => H - 26 - (v / ymax) * (H - 56);
+  const line = (x1, y1, x2, y2, color, dash) => {
     const e = document.createElementNS(NS, "line");
     e.setAttribute("x1", x1); e.setAttribute("y1", y1);
     e.setAttribute("x2", x2); e.setAttribute("y2", y2);
-    e.setAttribute("stroke", color); e.setAttribute("stroke-width", w || "1");
+    e.setAttribute("stroke", color); e.setAttribute("stroke-width", "1");
     if (dash) e.setAttribute("stroke-dasharray", "4,3");
     svg.appendChild(e);
   };
-  line(40, Y(t.amber_cut || 0), W - 20, Y(t.amber_cut || 0), "#ef6c00", true);
-  line(40, Y(t.red_cut || 0), W - 20, Y(t.red_cut || 0), "#c62828", true);
+  line(44, Y(t.amber_cut || 0), W - 20, Y(t.amber_cut || 0), "#ffa63d", true);
+  line(44, Y(t.red_cut || 0), W - 20, Y(t.red_cut || 0), "#ff5a5a", true);
   for (const p of parts) {
-    const x = X(p.ts), bw = Math.max(14, (W - 60) / Math.max(1, parts.length) / 3);
+    const x = X(p.ts), bw = Math.max(16, (W - 64) / Math.max(1, parts.length) / 3);
     const r = document.createElementNS(NS, "rect");
     r.setAttribute("x", x - bw / 2); r.setAttribute("y", Y(p.contribution));
-    r.setAttribute("width", bw); r.setAttribute("height", H - 24 - Y(p.contribution));
-    r.setAttribute("fill", "#2b6cb0"); r.setAttribute("opacity", "0.8");
+    r.setAttribute("width", bw); r.setAttribute("height", H - 26 - Y(p.contribution));
+    r.setAttribute("fill", "#4da3ff"); r.setAttribute("opacity", "0.85"); r.setAttribute("rx", "2");
     const ti = document.createElementNS(NS, "title");
     ti.textContent = `${p.event_id}: ${inr(p.amount)}, +${p.contribution} (${p.burst_peers} burst peers)`;
     r.appendChild(ti);
     svg.appendChild(r);
     const lb = document.createElementNS(NS, "text");
-    lb.setAttribute("x", x); lb.setAttribute("y", H - 8);
-    lb.setAttribute("text-anchor", "middle"); lb.setAttribute("font-size", "9"); lb.setAttribute("fill", "#67707c");
+    lb.setAttribute("x", x); lb.setAttribute("y", H - 9);
+    lb.setAttribute("text-anchor", "middle"); lb.setAttribute("font-size", "9"); lb.setAttribute("fill", "#8b95a5");
     lb.textContent = hhmm(p.ts);
     svg.appendChild(lb);
   }
   const cap = document.createElementNS(NS, "text");
-  cap.setAttribute("x", 40); cap.setAttribute("y", 12);
-  cap.setAttribute("font-size", "10"); cap.setAttribute("fill", "#67707c");
+  cap.setAttribute("x", 44); cap.setAttribute("y", 13);
+  cap.setAttribute("font-size", "10"); cap.setAttribute("fill", "#8b95a5");
   cap.textContent = `each bar = one transfer's share of S=${t.intensity} (hover for detail)`;
   svg.appendChild(cap);
+}
+function renderFlow(graph) {
+  const edges = [...(graph?.edges || [])].sort((a, b) => (a.ts < b.ts ? -1 : 1));
+  if (!edges.length) { $("flowList").innerHTML = '<li class="empty">—</li>'; return; }
+  $("flowList").innerHTML = edges.map((e) => {
+    if (e.type === "withdrawal")
+      return `<li><span class="ft">${hhmm(e.ts)}</span><span class="fwd">${inr(e.amount)} OUT at ${e.dst}</span><span style="color:var(--mut)">cash leaves the system</span></li>`;
+    if (e.type === "shared_attribute")
+      return `<li><span class="ft">${hhmm(e.ts)}</span><span>🔗 ${short(e.src)} ↔ ${short(e.dst)}</span><span style="color:var(--mut)">shared device / identifier</span></li>`;
+    return `<li><span class="ft">${hhmm(e.ts)}</span><span class="famt">${inr(e.amount)}</span><span>${short(e.src)} → ${short(e.dst)}</span></li>`;
+  }).join("");
 }
 
 /* ---- forecast ---- */
@@ -211,13 +246,14 @@ function renderForecast(a, graph) {
   renderStory(a, graph);
   renderWhy(a);
   renderTimeline(a);
+  renderFlow(graph);
   const cells = a.probable_cashout_cells || [];
   const pmax = Math.max(...cells.map((c) => c.probability), 0.01);
   $("cells").innerHTML = cells.map((c, i) =>
     `<div class="ev">${c.h3_cell} — p=${c.probability} (${c.nearby_cashout_points} terminals)</div>` +
     `<div class="cbar${i === 0 ? " hot" : ""}"><i style="width:${(c.probability / pmax) * 100}%"></i></div>`).join("");
-  $("mules").innerHTML = "<table><tr><th>node</th><th>base</th><th>learned</th><th>final</th></tr>" +
-    (a.mule || []).map((n) => `<tr><td>${n.id}</td><td>${n.baseline}</td><td>${n.learned}</td><td><b>${n.final}</b></td></tr>`).join("") + "</table>";
+  $("mules").innerHTML = "<table><tr><th>account</th><th>base</th><th>learned</th><th>final</th></tr>" +
+    (a.mule || []).map((n) => `<tr><td>${short(n.id)}</td><td>${n.baseline}</td><td>${n.learned}</td><td><b>${n.final}</b></td></tr>`).join("") + "</table>";
   $("evidence").innerHTML = (a.evidence || []).map((e) => `<li>${e}</li>`).join("") || "<li>—</li>";
   if (graph) drawGraph(graph);
   drawTerminals(cells[0]?.h3_cell);
@@ -239,6 +275,7 @@ function renderMetrics(m) {
 }
 
 /* ---- wiring ---- */
+$("hideHow").onclick = (e) => { e.preventDefault(); $("howto").style.display = "none"; };
 $("bRefreshInc").onclick = () => loadQueue().catch((e) => toast(String(e)));
 $("bMetrics").onclick = async () => { try { renderMetrics(await jget("/api/metrics")); } catch (e) { toast(String(e)); } };
 $("bFed").onclick = async () => {
@@ -250,7 +287,7 @@ $("bFed").onclick = async () => {
 };
 document.querySelectorAll("[data-rev]").forEach((b) => {
   b.onclick = async () => {
-    if (!lastAlert) return toast("run a Forecast first");
+    if (!lastAlert) return toast("pick a complaint first");
     try {
       const r = await jpost(`/api/alerts/${lastAlert.alert_id}/${b.dataset.rev}`, { by: "analyst", reason: "demo review" });
       $("reviewOut").textContent = `${r.alert_id} → ${r.status}`;
@@ -259,7 +296,7 @@ document.querySelectorAll("[data-rev]").forEach((b) => {
   };
 });
 $("bSim").onclick = async () => {
-  if (!lastAlert) return toast("run a Forecast first");
+  if (!lastAlert) return toast("pick a complaint first");
   try {
     const r = await jpost("/api/actions/simulate", { alert_id: lastAlert.alert_id, action: $("simAction").value });
     $("reviewOut").textContent = `${r.simulated_action} (${r.audit_id})`;
@@ -268,6 +305,7 @@ $("bSim").onclick = async () => {
 };
 function connectSSE() {
   if (es) es.close();
+  if (!sel) return;
   try {
     es = new EventSource(gw() + `/api/stream/${sel}`);
     es.onopen = () => { const l = $("live"); l.textContent = "● live"; l.classList.add("on"); };
@@ -276,7 +314,7 @@ function connectSSE() {
       const d = JSON.parse(m.data);
       if (d.kind === "event") {
         const e = d.event;
-        feed(`+ ${e.type} ${e.amount || ""} ${e.src} → ${e.dst || e.terminal_id} @${(e.ts || "").slice(11, 16)}`);
+        feed(`+ ${e.type} ${e.amount || ""} ${short(e.src)} → ${short(e.dst || e.terminal_id)} @${(e.ts || "").slice(11, 16)}`);
         loadQueue();
       } else if (d.kind === "forecast") {
         renderForecast(d.alert, await jget(`/api/incidents/${sel}/graph`).catch(() => null));
@@ -290,4 +328,3 @@ function connectSSE() {
 initMap();
 drawTerminals(null);
 loadQueue();
-connectSSE();

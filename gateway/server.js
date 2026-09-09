@@ -11,8 +11,9 @@ const ML_URL = process.env.ML_URL || "http://localhost:8000";
 const MODEL_VERSION = process.env.MODEL_VERSION || "prahari-0.1-dev";
 
 // JSON file store (Postgres in compose); tiers from data/config.json.
-const STORE_FILE = process.env.STORE_FILE ||
-  new URL("../data/gateway_store.json", import.meta.url);
+const DATA_DIR = process.env.DATA_DIR || new URL("../data/", import.meta.url);
+const dataFile = (name) => typeof DATA_DIR === "string" ? path.join(DATA_DIR, name) : new URL(name, DATA_DIR);
+const STORE_FILE = process.env.STORE_FILE || dataFile("gateway_store.json");
 const db = { incidents: {}, events: [], alerts: [], audit: [], seq: 1 };
 try {
   const saved = JSON.parse(await readFile(STORE_FILE, "utf8"));
@@ -31,7 +32,7 @@ const sseClients = new Map(); // incident_id -> Set(res)
 // tiers calibrated on synthetic fixtures (data/config.json); hardcoded fallback
 let TIERS = { amber: 1.2, red: 2.0, mule_cap_red: 0.5, mule_cap_amber: 0.35 };
 try {
-  const cfg = JSON.parse(await readFile(new URL("../data/config.json", import.meta.url), "utf8"));
+  const cfg = JSON.parse(await readFile(dataFile("config.json"), "utf8"));
   if (cfg.tiers) TIERS = { ...TIERS, ...cfg.tiers };
 } catch { /* fallback above */ }
 
@@ -62,20 +63,24 @@ async function ml(path, body) {
 
 app.get("/health", (_req, res) => res.json({ ok: true, model_version: MODEL_VERSION }));
 
-app.post("/api/incidents", (req, res) => {
-  const { incident_id, t0, amount, src_hash, channel } = req.body || {};
-  if (!incident_id || !t0 || !src_hash) return bad(res, 400, "incident_id, t0, src_hash required");
-  if (db.incidents[incident_id]) return bad(res, 409, "incident exists");
-  const t0ms = Date.parse(t0);
-  if (Number.isNaN(t0ms)) return bad(res, 400, "bad t0");
-  db.incidents[incident_id] = {
-    incident_id, t0, amount, src_hash, channel,
-    victim_lat: req.body.victim_lat ?? 28.6285,
-    victim_lon: req.body.victim_lon ?? 77.2137,
-    wall_t0: Date.now(),
-  };
+function fail(status, message) { throw Object.assign(new Error(message), { status }); }
+
+function upsertIncident(o) {
+  const { incident_id, t0, amount, src_hash, channel } = o || {};
+  if (!incident_id || !t0 || !src_hash) fail(400, "incident_id, t0, src_hash required");
+  if (db.incidents[incident_id]) return { duplicate: incident_id };
+  if (Number.isNaN(Date.parse(t0))) fail(400, "bad t0");
+  db.incidents[incident_id] = { incident_id, t0, amount, src_hash, channel,
+    victim_lat: o.victim_lat ?? 28.6285, victim_lon: o.victim_lon ?? 77.2137, wall_t0: Date.now() };
   save();
-  return res.status(201).json({ incident_id });
+  return { incident_id };
+}
+
+app.post("/api/incidents", (req, res) => {
+  try {
+    const r = upsertIncident(req.body);
+    return res.status(r.duplicate ? 200 : 201).json(r);
+  } catch (err) { return bad(res, err.status || 500, err.message); }
 });
 
 app.get("/api/incidents", (_req, res) => {
@@ -86,19 +91,24 @@ app.get("/api/incidents", (_req, res) => {
     last_tier: lastTier[i.incident_id] || null })) });
 });
 
-function addEvent(type, req, res) {
-  const e = req.body || {};
-  const need = ["event_id", "incident_id", "ts", "src"];
-  for (const k of need) if (!e[k]) return bad(res, 400, `${k} required`);
-  if (e.type && e.type !== type) return bad(res, 400, `type ${e.type} mismatches route ${type}`);
+function ingestEvent(type, e) {
+  e = e || {};
+  for (const k of ["event_id", "incident_id", "ts", "src"]) if (!e[k]) fail(400, `${k} required`);
+  if (e.type && e.type !== type) fail(400, `type ${e.type} mismatches route ${type}`);
   const inc = db.incidents[e.incident_id];
-  if (!inc) return bad(res, 404, "unknown incident_id");
-  if (Date.parse(e.ts) < Date.parse(inc.t0)) return bad(res, 400, "ts before complaint t0");
-  if (db.events.some((x) => x.event_id === e.event_id)) return res.status(202).json({ duplicate: e.event_id });
+  if (!inc) fail(404, "unknown incident_id");
+  if (Date.parse(e.ts) < Date.parse(inc.t0)) fail(400, "ts before complaint t0");
+  if (db.events.some((x) => x.event_id === e.event_id)) return { duplicate: e.event_id };
   db.events.push({ ...e, type });
   save();
   pushSSE(e.incident_id, { kind: "event", event: e });
-  return res.status(202).json({ accepted: e.event_id });
+  return { accepted: e.event_id };
+}
+
+function addEvent(type, req, res) {
+  try {
+    return res.status(202).json(ingestEvent(type, req.body));
+  } catch (err) { return bad(res, err.status || 500, err.message); }
 }
 app.post("/api/events/transactions", (req, res) => addEvent("transfer", req, res));
 app.post("/api/events/withdrawals", (req, res) => addEvent("withdrawal", req, res));
@@ -115,15 +125,13 @@ app.get("/api/incidents/:id/graph", async (req, res) => {
   } catch (err) { return bad(res, 502, String(err.message || err)); }
 });
 
-app.get("/api/incidents/:id/forecast", async (req, res) => {
-  const inc = db.incidents[req.params.id];
-  if (!inc) return bad(res, 404, "unknown incident");
+async function forecastFor(inc) {
   const events = incidentEvents(inc.incident_id);
-  if (!events.length) return bad(res, 400, "no events yet");
+  if (!events.length) fail(400, "no events yet");
   let f;
   try {
     f = await ml("/ml/forecast", { incident: inc, events });
-  } catch (err) { return bad(res, 502, String(err.message || err)); }
+  } catch (err) { fail(502, String(err.message || err)); }
   const top = f.probable_cashout_cells[0];
   const liveWd = events.some((e) => e.type === "withdrawal");
   const intensity = f.intensity ?? top.probability;
@@ -157,7 +165,36 @@ app.get("/api/incidents/:id/forecast", async (req, res) => {
     decision: null, simulated_action: null, model_version: alert.model_version, ts: alert.ts });
   save();
   pushSSE(inc.incident_id, { kind: "forecast", alert });
-  return res.json(alert);
+  return alert;
+}
+
+app.get("/api/incidents/:id/forecast", async (req, res) => {
+  const inc = db.incidents[req.params.id];
+  if (!inc) return bad(res, 404, "unknown incident");
+  try {
+    return res.json(await forecastFor(inc));
+  } catch (err) { return bad(res, err.status || 500, err.message); }
+});
+
+const SEED_SCENARIOS = ["demo_golden_hour", "fraud_multi_path", "fraud_uptown",
+  "fraud_withdrawal", "normal_day", "salary_rent", "family_remittance",
+  "business_payment", "repeat_vendor"];
+const SEED_ROUTES = { transfer: "transfer", withdrawal: "withdrawal", shared_attribute: "shared_attribute" };
+
+app.post("/api/demo/seed", async (_req, res) => {
+  const out = [];
+  for (const name of SEED_SCENARIOS) {
+    try {
+      const sc = JSON.parse(await readFile(dataFile(name + ".json"), "utf8"));
+      upsertIncident({ incident_id: sc.incident_id, t0: sc.t0, amount: sc.amount,
+        src_hash: sc.src_hash, channel: sc.channel,
+        victim_lat: sc.victim_lat, victim_lon: sc.victim_lon });
+      for (const e of sc.events) ingestEvent(SEED_ROUTES[e.type] || "transfer", e);
+      const a = await forecastFor(db.incidents[sc.incident_id]);
+      out.push({ incident: sc.incident_id, tier: a.risk_tier });
+    } catch (err) { out.push({ incident: name, error: String(err.message || err) }); }
+  }
+  res.json({ seeded: out });
 });
 
 app.get("/api/incidents/:id/alerts", (req, res) =>
@@ -192,8 +229,7 @@ app.post("/api/actions/simulate", (req, res) => {
 
 app.get("/api/terminals", async (_req, res) => {
   try {
-    const termFile = process.env.TERMINALS_FILE ||
-      new URL("../data/terminals.json", import.meta.url);
+    const termFile = process.env.TERMINALS_FILE || dataFile("terminals.json");
     const raw = await readFile(termFile, "utf8");
     res.json({ terminals: JSON.parse(raw) });
   } catch { res.json({ terminals: [] }); }

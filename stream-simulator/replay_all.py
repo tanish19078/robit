@@ -48,9 +48,7 @@ def main():
         inc["victim_lat"] = sc.get("victim_lat", 28.6285)
         inc["victim_lon"] = sc.get("victim_lon", 77.2137)
         st, _ = api("POST", base, "/api/incidents", inc)
-        if st == 409:
-            pass  # already replayed into this gateway: reuse, forecast again
-        elif st != 201:
+        if st not in (200, 201):
             print(f"{sc['incident_id']:22} ERROR posting incident ({st})"); continue
         for e in sc["events"]:
             st, _ = api("POST", base, ROUTES[e["type"]], e)

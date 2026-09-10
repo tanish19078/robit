@@ -34,7 +34,7 @@ cd ../gateway  && npm install
 cd ..
 ```
 
-### 2. Launch Local Prototype
+### 2. Launch System Stack
 ```bash
 # Boots ML engine (:8000), Gateway (:3000), and auto-builds React frontend if needed
 python hold_demo.py
@@ -113,7 +113,7 @@ Built with **React 19**, **Vite**, **React Router v7**, and **React-Leaflet**, f
 | **`/incidents`** | **Complaint Queue** | Sortable intake register with risk tier indicators, amounts, channels, timestamps, real-time tier filter chips, and automated 5-second polling. |
 | **`/incidents/:id`** | **Investigation Workspace** | Full incident intelligence console: case file sidebar, large verdict banner, explainable rule trace with threshold needle, SVG money trail, interactive Leaflet ATM cluster map, excitation chart, suspect rankings, analyst review actions (`Acknowledge`, `Escalate`, `Dismiss`), and live SSE event feed. |
 | **`/federation`** | **Federation Demo** | Visual demonstration of 3-bank privacy-preserving Federated Averaging (`BANK_A`, `BANK_B`, `BANK_C`), feature weight comparisons, cosine similarity metric ($1.0$), and data leakage verification. |
-| **`/architecture`** | **System Architecture** | Technical breakdown of service topology, pipeline formulas, prototype vs. production roadmap comparison, and compliance safeguards. |
+| **`/architecture`** | **System Architecture** | Technical breakdown of service topology, pipeline formulas, enterprise scale-out roadmap, and compliance safeguards. |
 
 ---
 
@@ -161,7 +161,7 @@ python stream-simulator/replay_all.py --gateway http://localhost:3000
 - **Precision**: `1.00` | **Recall**: `1.00` | **False-Positive Rate**: `0.00`
 
 ### 3. Key Engineering Findings (Caught & Fixed During Build)
-1. **Map-Independent Generalizability**: Initial prototype designs scored cell likelihood on raw spatial density ($\lambda$), which varied drastically across different cities ($0.24$ on 3-cell synthetic grid vs. $0.66$ on 35-cell OpenStreetMap Delhi map). By separating temporal excitation $S$ from spatial decay, the risk metric became completely map-independent (`check_osm.py` verified).
+1. **Map-Independent Generalizability**: Early framework iterations scored cell likelihood on raw spatial density ($\lambda$), which varied drastically across different cities ($0.24$ on 3-cell synthetic grid vs. $0.66$ on 35-cell OpenStreetMap Delhi map). By separating temporal excitation $S$ from spatial decay, the risk metric became completely map-independent (`check_osm.py` verified).
 2. **False-Positive Fusion Brake**: High transaction amounts alone must not trigger high-priority alerts. When burst excitation is hot ($S > 2.0$) but no intermediary mule exhibits an anomaly score ($\ge 0.50$), the gateway automatically steps the alert down from **Red** to **Amber** (`repeat_vendor.json`), protecting bank fraud teams from alert fatigue.
 3. **Victim Immunity by Construction**: The complaint reporting entity (`victim_hash`) is structurally quarantined from unsupervised anomaly scoring, eliminating the risk of victim accounts being misclassified as mules.
 

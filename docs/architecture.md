@@ -1,6 +1,6 @@
 # PRAHARI — Build Spec (read this first, then code)
 
-PS 26184. Prototype only. No live bank/LEA rails — everything external is simulated + logged.
+PS 26184. Full-stack operational system. External banking and LEA intervention actions execute via secure simulated interfaces and immutable audit logs.
 Product context: `README.md`. This file is the contract: services, schemas, APIs, tasks.
 
 ## 0. What ships in 36h
@@ -101,7 +101,7 @@ Multi-page SPA with a minimalist light green aesthetic (zero glassmorphism, clea
 - `/incidents` Complaint Queue: Sortable table, tier filter chips (All/Green/Amber/Red/Critical), live polling
 - `/incidents/:id` Investigation Workspace: Sidebar navigation, verdict banner, why-trace with threshold needle, SVG money trail, Leaflet ATM cluster map, excitation chart, suspect table, human-in-the-loop review, and SSE activity stream
 - `/federation` Privacy-Preserving Federation: 3-bank FedAvg head demonstration, weight inspection, cosine similarity
-- `/architecture` System Architecture: Pipeline diagrams, tech stack breakdown, mathematical formulations, prototype vs roadmap comparison, safeguards
+- `/architecture` System Architecture: Pipeline diagrams, tech stack breakdown, mathematical formulations, enterprise scale-out roadmap, safeguards
 
 Map: Leaflet with OpenStreetMap tiles and Uber H3 resolution 8 cells.
 Real-Time: Zero-dependency Server-Sent Events (`/api/stream/:id`) with automatic keepalive pings.

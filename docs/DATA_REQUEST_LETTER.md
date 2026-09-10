@@ -5,11 +5,11 @@
 
 ---
 
-**Subject:** Academic collaboration request — anonymized cyber-fraud data for SIH 2026 prototype (PS 26184)
+**Subject:** Institutional collaboration request — anonymized cyber-fraud data for SIH 2026 (PS 26184)
 
 Respected Sir / Madam,
 
-We are a student team building **PRAHARI**, a decision-support prototype for
+We are a team building **PRAHARI**, a decision-support predictive analytics framework for
 Smart India Hackathon 2026 (Problem Statement 26184): forecasting likely
 cash-withdrawal locations from cyber-fraud complaints so banks and cyber cells
 can act inside the critical post-complaint window.
@@ -26,8 +26,8 @@ for academic evaluation only and under your terms (including NDA):
    `ml-service/federated/`), so raw ledgers never leave your premises.
 
 Our safeguards: hashed/tokenized identifiers end to end, human review required
-for every alert, simulated (never live) actions in the prototype, full audit
-trail with model versioning, academic-use-only retention with deletion on request.
+for every alert, simulated (never live) actions in the evaluation system, full audit
+trail with model versioning, institutional-use-only retention with deletion on request.
 
 We would be grateful for a 20-minute discussion at your convenience. Our faculty
 mentor ([name, designation, contact]) is in CC and supervises this work.

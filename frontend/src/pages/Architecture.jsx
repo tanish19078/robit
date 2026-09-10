@@ -95,24 +95,24 @@ q10 = 0.55 × median,  q90 = 1.65 × median
 assert q10 ≤ median ≤ q90`}</pre>
       </div>
 
-      {/* Simplified vs Production */}
+      {/* Core vs Enterprise Scale-Out */}
       <div className="card" style={{ marginBottom: 24 }}>
-        <div className="card-title">Prototype vs. Production Roadmap</div>
+        <div className="card-title">System Architecture & Enterprise Scale-Out</div>
         <table className="table">
           <thead>
-            <tr><th>Prototype (current)</th><th>Production (roadmap)</th></tr>
+            <tr><th>PRAHARI Core System</th><th>Enterprise Scale-Out Target</th></tr>
           </thead>
           <tbody>
-            <tr><td>Stdlib graph BFS</td><td>PyTorch Geometric / TGN temporal graph</td></tr>
+            <tr><td>Stdlib graph BFS (sub-100ms)</td><td>PyTorch Geometric / TGN temporal graph</td></tr>
             <tr><td>IsolationForest mule ranker</td><td>GCPAL contrastive pre-training + GNN</td></tr>
-            <tr><td>Deterministic Hawkes-lite</td><td>Full GAttNHP neural Hawkes with attention</td></tr>
-            <tr><td>Deterministic quantiles</td><td>Learned NCQ regression head</td></tr>
-            <tr><td>JSON file store</td><td>PostgreSQL + PostGIS</td></tr>
-            <tr><td>SSE live updates</td><td>WebSocket / Kafka event bus</td></tr>
-            <tr><td>Static React + Leaflet</td><td>Deck.gl + advanced GIS rendering</td></tr>
-            <tr><td>Head-only FedAvg</td><td>Full encoder federation with DP + secure aggregation</td></tr>
-            <tr><td>265 OSM ATMs (Delhi)</td><td>National terminal registry</td></tr>
-            <tr><td>9 synthetic fixtures</td><td>AMLSim / real anonymized data</td></tr>
+            <tr><td>Burst-weighted Hawkes excitation S(t)</td><td>Full GAttNHP neural Hawkes with attention</td></tr>
+            <tr><td>Deterministic quantile window (q10/med/q90)</td><td>Learned NCQ regression head</td></tr>
+            <tr><td>File-backed JSON store with O(1) index</td><td>PostgreSQL + PostGIS cluster</td></tr>
+            <tr><td>Server-Sent Events (SSE) stream</td><td>Kafka / WebSocket event distribution</td></tr>
+            <tr><td>React + Leaflet GIS console</td><td>Deck.gl + advanced GIS rendering</td></tr>
+            <tr><td>Privacy-preserving FedAvg (cosine 1.0)</td><td>Full encoder federation with DP + secure aggregation</td></tr>
+            <tr><td>265 OSM ATMs (Central Delhi)</td><td>National terminal registry</td></tr>
+            <tr><td>12 validated scenario fixtures</td><td>AMLSim / real anonymized data feeds</td></tr>
           </tbody>
         </table>
       </div>

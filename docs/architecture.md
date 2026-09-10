@@ -94,12 +94,18 @@ GET  /api/metrics → {p50_ms, p95_ms, precision_k_nodes, precision_k_cells, cov
 
 Every mutating route writes `audit_log`. `model_version` = git sha or `prahari-0.1-dev`.
 
-## 5. Frontend tasks (keep it ugly but working)
+## 5. Frontend Architecture (React + Vite + Leaflet)
 
-Pages: `/` incident queue (clock ticking since t0) → `/:id` graph + heatmap + evidence + tier buttons → `/metrics`.
-Map: Leaflet only, H3 polygon + terminal dots + path polyline. No Deck.gl, no token.
-WSS: `incident:{id}` topic → prepend event, bump risk without refresh.
-Buttons must call ack/escalate/dismiss + simulate, then show audit id. If WSS breaks, poll `/forecast` every 3s — demo continues.
+Multi-page SPA with a minimalist light green aesthetic (zero glassmorphism, clean cards, emerald accents):
+- `/` Landing: Hero overview, live metric cards, 4-step pipeline strip, Golden Hour explainer, demo seeder
+- `/incidents` Complaint Queue: Sortable table, tier filter chips (All/Green/Amber/Red/Critical), live polling
+- `/incidents/:id` Investigation Workspace: Sidebar navigation, verdict banner, why-trace with threshold needle, SVG money trail, Leaflet ATM cluster map, excitation chart, suspect table, human-in-the-loop review, and SSE activity stream
+- `/federation` Privacy-Preserving Federation: 3-bank FedAvg head demonstration, weight inspection, cosine similarity
+- `/architecture` System Architecture: Pipeline diagrams, tech stack breakdown, mathematical formulations, prototype vs roadmap comparison, safeguards
+
+Map: Leaflet with OpenStreetMap tiles and Uber H3 resolution 8 cells.
+Real-Time: Zero-dependency Server-Sent Events (`/api/stream/:id`) with automatic keepalive pings.
+Controls: Human approval workflow (Acknowledge, Escalate, Dismiss) and simulated banking actions (`step_up`, `hold_request`, `patrol_notify`) with immutable audit logging.
 
 ## 6. Simulator + fixtures (judge demo lives here)
 

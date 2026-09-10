@@ -1,97 +1,132 @@
-# PRAHARI — complaint-anchored cash-withdrawal forecasting
+# PRAHARI — Complaint-Anchored Cash-Withdrawal Forecasting
 
-SIH 2026 · PS 26184 · working prototype (`robit/`). A cyber-fraud complaint starts
-a clock; the system traces the live money path and returns **where** (ranked H3
-cells), **when** (q10/median/q90 minutes), **who** (mule-ranked nodes) and the
-**evidence** — for human-reviewed, simulated intervention.
+SIH 2026 · PS 26184 · Working prototype.
 
-Spec: `docs/architecture.md` · product context: `docs/PRAHARI_Final.md` ·
-agent rules: `docs/claude.md` · measured numbers: `docs/RESULTS.md`.
+A cybercrime complaint starts a clock. The system traces the live money path and
+returns **where** (ranked H3 cells), **when** (q10/median/q90 minutes),
+**who** (mule-ranked nodes) and the **evidence** — for human-reviewed,
+simulated intervention.
 
-## Run it
+Documentation: `docs/PRAHARI_Final.md` (product spec) · `docs/architecture.md`
+(system design) · `docs/RESULTS.md` (measured numbers) · `docs/DECISIONS.md`
+(design log) · `docs/DATA_STRATEGY.md` (data path).
 
-```powershell
-cd ml-service; pip install -r requirements.txt      # once
-cd ../gateway; npm install                           # once
+## Quick Start
+
+```bash
+# One-time setup
+cd ml-service && pip install -r requirements.txt
+cd ../frontend && npm install
+cd ../gateway  && npm install
+
+# Run everything (auto-builds frontend if needed)
 cd ..
-python hold_demo.py        # boots ml:8000 + gateway:3000, replays demo, stays up
-# open http://localhost:3000/ → click an incident in the queue (auto-forecasts)
-# fresh/empty deploy? press "Load demo data" — or: curl -XPOST localhost:3000/api/demo/seed
-```
-Deploy anywhere: `docs/DEPLOY.md` (compose / processes / PaaS).
-
-Demo flow: complaint `10:00` → Layer-1 `10:01` → split `10:03` → forecast
-**Red, top cell p=0.69, window 4/8/13** → analyst ack/escalate → simulated
-`step_up` + audit row. Batch all 9 reports:
-`python stream-simulator/replay_all.py --gateway http://localhost:3000`
-→ verdict table with precision/recall (currently 1.00/1.00, FP 0.00).
-
-## How it works (4 modules)
-
-1. **Intake** (`gateway/`): complaint + transfer/withdrawal JSON → validation
-   (pre-`t0` events rejected 400) → JSON file store → SSE live feed.
-2. **Graph** (`ml-service/graph/`): k-hop subgraph around the complaint, greedy
-   victim→frontier path. Stdlib only.
-3. **Mules** (`ml-service/mule/`): explainable baseline (velocity, new-account,
-   hop depth, split, terminal convergence) + IsolationForest peer rank.
-   Victims are anchors, never suspects. `final = sigmoid(3·base + 2·learned − 1.5)`.
-4. **Where+When** (`ml-service/forecast/`): Hawkes-lite cell scores
-   (`base + S·proximity·density`, S = burst-weighted excitation) + quantile
-   time window. **Tiers run on S** (Green <1.2 · Amber 1.2–2.0 · Red >2.0,
-   cuts in `data/config.json`); cells answer *where*. **Fusion cap:** Red
-   without a suspicious peer (max mule final <0.5) steps down to Amber.
-   Live withdrawal event → Critical.
-
-Federation (`ml-service/federated/`): 3 simulated bank clients share class means
-only; FedAvg head matches centralized weights (cosine 1.0, leakage-tested).
-Head-only demo — encoder federation is roadmap.
-
-## Repo map
-
-```text
-gateway/            Express :3000 — API, tiers, audit, file store, serves frontend/
-ml-service/         FastAPI :8000 — graph/ mule/ forecast/ federated/ (+ smoke + fed tests)
-frontend/           static dashboard — queue sidebar with tier dots, tier banner
-                    with pipeline latency, SVG money-graph, mule table, Leaflet
-                    heatmap, live activity feed, review buttons, metrics
-stream-simulator/   replay_all.py (1 or 9 scenarios + verdict table) · e2e_check.py · check_osm.py
-data/               config.json (tiers + weights) · terminals.json (test fixture) ·
-                    terminals_osm_delhi.json (265 real OSM ATMs, 35 H3 cells) ·
-                    9 scenario fixtures (4 fraud, 4 negative, 1 capped) ·
-                    fetch_osm_terminals.py
-infra/              docker-compose.yml (needs Docker; laptop runs without it)
-docs/               PRAHARI_Final.md · RESULTS.md · DATA_STRATEGY.md ·
-                    DATA_REQUEST_LETTER.md · DEMO_BRIEF.md
-hold_demo.py        one-command local stack
+python hold_demo.py
+# Open http://localhost:3000/
 ```
 
-Swap terminal maps without code changes: `ML_TERMINALS` + `ML_CONFIG` (ml-service),
-`TERMINALS_FILE` + `DATA_DIR` (gateway). Other env: `PORT`, `ML_URL`,
-`MODEL_VERSION`, `STORE_FILE`, `FRONTEND_DIR`. Full list: `docs/DEPLOY.md`.
+The landing page loads with system overview and a "Load Demo Data" button.
+Click through to the Incident Queue, select any complaint, and the full
+investigation page renders with graph, map, verdict, and review controls.
 
-## API
-
-`POST /api/incidents` · `POST /api/events/transactions|withdrawals|attributes` ·
-`GET /api/incidents` · `GET /api/incidents/:id/graph|forecast|alerts` ·
-`POST /api/alerts/:id/acknowledge|escalate|dismiss` ·
-`POST /api/actions/simulate` · `POST /api/demo/seed` · `GET /api/terminals` ·
-`GET /api/federated/demo` · `GET /api/metrics` · `GET /api/stream/:id` (SSE).
-
-## Tests (all must pass)
-
-```powershell
-cd ml-service; python test_smoke.py; python federated/test_fed.py
-cd ../stream-simulator; python e2e_check.py; python check_osm.py
+For development with hot-reload:
+```bash
+cd frontend && npm run dev    # Vite dev server :5173, proxies API to :3000
 ```
 
-9 fixtures (4 fraud, 4 negative, 1 capped): excitation separates fraud
-bursts (6.3–11.8; withdrawal 1.1 via live event) from negatives (0.1–1.0);
-true cell first; quantiles ordered; e2e tiers exactly
-{Red, Critical, Green, Amber}. `replay_all.py` prints the live confusion
-table (currently TP=4 FP=0). Full numbers: `docs/RESULTS.md`.
+Deploy: `docs/DEPLOY.md` (Docker Compose / bare processes / PaaS).
+
+## How It Works (4 Modules)
+
+1. **Intake** (`gateway/`): Complaint + transfer/withdrawal/attribute events.
+   Validates timestamps (rejects pre-t0 events with 400), deduplicates,
+   persists to JSON file store, broadcasts via SSE.
+
+2. **Graph** (`ml-service/graph/`): k-hop BFS subgraph (depth=3) around the
+   complaint root. Greedy max-amount path from victim to frontier. Stdlib only.
+
+3. **Mule Detection** (`ml-service/mule/`): 6 explainable features
+   (fan_out_vel, fan_in_vel, is_new, hop_depth, split_ratio, terminal_conv)
+   plus IsolationForest peer rank. Victims excluded by construction.
+   `final = sigmoid(3*baseline + 2*learned - 1.5)`.
+
+4. **Cash-Out Forecast** (`ml-service/forecast/`): Hawkes-lite burst-weighted
+   excitation S over H3 cells. Tiers on S: Green <1.2, Amber 1.2-2.0,
+   Red >2.0, Critical = live withdrawal. Fusion cap: Red without a suspicious
+   peer (max mule final <0.5) steps down to Amber. Quantile window:
+   q10/median/q90 minutes until expected cash-out.
+
+**Federation** (`ml-service/federated/`): 3 simulated bank clients share class
+means only. FedAvg head matches centralized weights (cosine 1.0,
+leakage-tested). Head-only scope; encoder federation is roadmap.
+
+## Frontend (5 Pages)
+
+| Page | Route | Purpose |
+|---|---|---|
+| Landing | `/` | System overview, pipeline visual, demo data loader |
+| Incident Queue | `/incidents` | Complaint table with tier filters, auto-refresh |
+| Investigation | `/incidents/:id` | Verdict, rule trace, money graph, map, suspects, review |
+| Federation Demo | `/federation` | 3-bank FedAvg results and privacy guarantees |
+| Architecture | `/architecture` | Tech stack, module formulas, roadmap comparison |
+
+Built with React 19, Vite, react-router-dom, and react-leaflet. Light green
+minimalist theme. No glassmorphism, no build-time CSS framework.
+
+## Repository Structure
+
+```
+gateway/              Express :3000 — API, tiers, audit, file store
+ml-service/           FastAPI :8000 — graph/ mule/ forecast/ federated/
+frontend/             React + Vite — 5 pages, 12 components
+  src/pages/          Landing, IncidentQueue, IncidentDetail, FederationDemo, Architecture
+  src/components/     Navbar, MoneyGraph, CashoutMap, MuleTable, WhyVerdict, etc.
+stream-simulator/     replay_all.py, e2e_check.py, check_osm.py
+data/                 config.json, 9+ scenario fixtures, terminals (test + OSM Delhi)
+infra/                docker-compose.yml
+docs/                 Product spec, results, decisions, deploy guide, data strategy
+hold_demo.py          One-command local launcher (builds frontend if needed)
+```
+
+## API Endpoints
+
+```
+POST /api/incidents                          Register complaint
+POST /api/events/transactions                Ingest transfer
+POST /api/events/withdrawals                 Ingest withdrawal
+POST /api/events/attributes                  Ingest shared attribute
+GET  /api/incidents                          List all incidents
+GET  /api/incidents/:id/forecast             Run/get forecast
+GET  /api/incidents/:id/graph                Get money graph
+GET  /api/incidents/:id/alerts               Get alerts
+POST /api/alerts/:id/acknowledge             Analyst acknowledge
+POST /api/alerts/:id/escalate                Analyst escalate
+POST /api/alerts/:id/dismiss                 Analyst dismiss
+POST /api/actions/simulate                   Simulate bank action
+POST /api/demo/seed                          Load all fixtures
+GET  /api/terminals                          Terminal registry
+GET  /api/federated/demo                     Federation results
+GET  /api/metrics                            Pipeline metrics
+GET  /api/stream/:id                         SSE live feed
+```
+
+## Tests
+
+```bash
+cd ml-service && python test_smoke.py && python federated/test_fed.py
+cd ../stream-simulator && python e2e_check.py && python check_osm.py
+```
+
+9 fixtures: 4 fraud, 4 negative, 1 fusion-capped. Excitation separates fraud
+bursts (S=6.3-11.8) from negatives (S=0.1-1.0). True cell ranked first.
+Quantiles ordered. `replay_all.py` confusion matrix: TP=4, FP=0, TN=5, FN=0
+(precision 1.00, recall 1.00). Full numbers in `docs/RESULTS.md`.
 
 ## Safeguards
 
-Hashed IDs, `SIMULATION` tags, mandatory human approval, simulated-only
-financial actions, per-alert model version + audit trail. No live NCRP/CBS
-integration — see `docs/DATA_STRATEGY.md` for the path to authorized data.
+- Hashed identifiers throughout — no PII in the pipeline
+- Every output tagged `SIMULATION` — no live banking rail
+- Mandatory human approval — no autonomous freeze or lien
+- Financial actions are simulated and audited only
+- Per-alert model version, evidence payload, and immutable audit trail
+- Federated learning shares aggregated statistics only

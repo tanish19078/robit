@@ -1,5 +1,11 @@
 import { useRef, useEffect } from "react";
-import { shortId, riskColor, inr, hhmm } from "../utils";
+import { shortId, inr, hhmm } from "../utils";
+
+function riskHex(val) {
+  if (val > 0.65) return "#dc2626";
+  if (val >= 0.35) return "#d97706";
+  return "#059669";
+}
 
 export default function MoneyGraph({ graph, muleScores = {} }) {
   const svgRef = useRef(null);
@@ -44,15 +50,15 @@ export default function MoneyGraph({ graph, muleScores = {} }) {
       l.setAttribute("x1", a.x); l.setAttribute("y1", a.y);
       l.setAttribute("x2", b.x); l.setAttribute("y2", b.y);
       l.setAttribute("stroke",
-        e.type === "withdrawal" ? "#ff5a5a" :
-        e.type === "shared_attribute" ? "#6b7686" : "#4da3ff"
+        e.type === "withdrawal" ? "#dc2626" :
+        e.type === "shared_attribute" ? "#94a3b8" : "#059669"
       );
       l.setAttribute("stroke-width", "2");
       if (e.type === "shared_attribute") l.setAttribute("stroke-dasharray", "5,4");
       svg.appendChild(l);
       if (e.type !== "shared_attribute") {
         mkText((a.x + b.x) / 2, (a.y + b.y) / 2 - 8,
-          `${inr(e.amount)} · ${hhmm(e.ts)}`, "9.5", "#8b95a5");
+          `${inr(e.amount)} · ${hhmm(e.ts)}`, "9.5", "#5f7a6b");
       }
     }
 
@@ -61,10 +67,10 @@ export default function MoneyGraph({ graph, muleScores = {} }) {
       const score = muleScores[n.id] || 0;
       const c = document.createElementNS(NS, "circle");
       c.setAttribute("cx", p.x); c.setAttribute("cy", p.y); c.setAttribute("r", "18");
-      c.setAttribute("fill", riskColor(score)); c.setAttribute("opacity", "0.9");
+      c.setAttribute("fill", riskHex(score)); c.setAttribute("opacity", "0.9");
       svg.appendChild(c);
-      mkText(p.x, p.y + 5, score.toFixed(2), "10", "#0b0f14");
-      mkText(p.x, p.y + 38, shortId(n.id).slice(0, 14), "10");
+      mkText(p.x, p.y + 5, score.toFixed(2), "10", "#fff");
+      mkText(p.x, p.y + 38, shortId(n.id).slice(0, 14), "10", "#1a2e23");
     }
   }, [graph, muleScores]);
 

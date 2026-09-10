@@ -13,8 +13,10 @@ import urllib.error
 import urllib.request
 
 SCENARIOS = ["demo_golden_hour", "fraud_multi_path", "fraud_uptown",
-             "fraud_withdrawal", "normal_day", "salary_rent",
-             "family_remittance", "business_payment", "repeat_vendor"]
+             "fraud_fanout", "fraud_withdrawal", "dual_withdrawal",
+             "normal_day", "salary_rent",
+             "family_remittance", "business_payment", "slow_transfer",
+             "repeat_vendor"]
 ROUTES = {"transfer": "/api/events/transactions", "withdrawal": "/api/events/withdrawals",
           "shared_attribute": "/api/events/attributes"}
 

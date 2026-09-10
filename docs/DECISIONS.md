@@ -56,6 +56,8 @@ kept, not hidden — most of them paid for a later 9.
 | `f7c393e` | Route type-stomp bugfix (7.74 vs 9.67 mismatch) | 10/10 | Exact-match proof gateway == in-process |
 | `5812c13` | Per-event breakdown + tier trace fields | 9/10 | Explanation lives backend-side |
 | `330ad2a` | Why-verdict card, timeline, story line | 9/10 | Verdict explains itself |
+| `728c6e0` | Multi-page React + Vite frontend rebuild | 9/10 | 5 pages, 12 components, SPA catch-all |
+| `HEAD` | Light green minimalist theme, O(1) event index, 12-incident suite | 9/10 | Replaced dark mode with crisp green aesthetic; zero glassmorphism |
 
 ## Non-commit decisions (no hash, still binding)
 

@@ -20,9 +20,18 @@ try {
   Object.assign(db, saved);
   console.log(`store: loaded ${Object.keys(db.incidents).length} incidents, ${db.events.length} events`);
 } catch { /* first boot: empty store */ }
+const eventsByIncident = new Map();
+function indexAllEvents() {
+  eventsByIncident.clear();
+  for (const e of db.events) {
+    if (!eventsByIncident.has(e.incident_id)) eventsByIncident.set(e.incident_id, []);
+    eventsByIncident.get(e.incident_id).push(e);
+  }
+}
+indexAllEvents();
+
 let saveTimer = null;
 function save() {
-  // ponytail: debounced 200ms file write, last write lost on crash; Postgres + WAL when volume matters
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() =>
     writeFile(STORE_FILE, JSON.stringify(db)).catch((e) => console.error("store save failed:", e.message)), 200);
@@ -53,12 +62,19 @@ function tierOf(intensity, hasLiveWithdrawal) {
 }
 
 async function ml(path, body) {
-  const r = await fetch(`${ML_URL}${path}`, {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error(`ml ${path} -> ${r.status}`);
-  return r.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(`${ML_URL}${path}`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error(`ml ${path} -> ${r.status}`);
+    return await r.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 app.get("/health", (_req, res) => res.json({ ok: true, model_version: MODEL_VERSION }));
@@ -99,7 +115,10 @@ function ingestEvent(type, e) {
   if (!inc) fail(404, "unknown incident_id");
   if (Date.parse(e.ts) < Date.parse(inc.t0)) fail(400, "ts before complaint t0");
   if (db.events.some((x) => x.event_id === e.event_id)) return { duplicate: e.event_id };
-  db.events.push({ ...e, type });
+  const stored = { ...e, type };
+  db.events.push(stored);
+  if (!eventsByIncident.has(e.incident_id)) eventsByIncident.set(e.incident_id, []);
+  eventsByIncident.get(e.incident_id).push(stored);
   save();
   pushSSE(e.incident_id, { kind: "event", event: e });
   return { accepted: e.event_id };
@@ -114,8 +133,8 @@ app.post("/api/events/transactions", (req, res) => addEvent("transfer", req, res
 app.post("/api/events/withdrawals", (req, res) => addEvent("withdrawal", req, res));
 app.post("/api/events/attributes", (req, res) => addEvent("shared_attribute", req, res));
 
-// ponytail: O(n) scan per request, index by incident_id if events pass ~10k
-const incidentEvents = (id) => db.events.filter((e) => e.incident_id === id);
+// O(1) index lookup per incident
+const incidentEvents = (id) => eventsByIncident.get(id) || [];
 
 app.get("/api/incidents/:id/graph", async (req, res) => {
   const inc = db.incidents[req.params.id];
@@ -177,8 +196,9 @@ app.get("/api/incidents/:id/forecast", async (req, res) => {
 });
 
 const SEED_SCENARIOS = ["demo_golden_hour", "fraud_multi_path", "fraud_uptown",
-  "fraud_withdrawal", "normal_day", "salary_rent", "family_remittance",
-  "business_payment", "repeat_vendor"];
+  "fraud_fanout", "fraud_withdrawal", "dual_withdrawal", "normal_day",
+  "salary_rent", "family_remittance", "business_payment", "slow_transfer",
+  "repeat_vendor"];
 const SEED_ROUTES = { transfer: "transfer", withdrawal: "withdrawal", shared_attribute: "shared_attribute" };
 
 app.post("/api/demo/seed", async (_req, res) => {
@@ -264,7 +284,13 @@ app.get("/api/stream/:id", (req, res) => {
   const id = req.params.id;
   if (!sseClients.has(id)) sseClients.set(id, new Set());
   sseClients.get(id).add(res);
-  req.on("close", () => sseClients.get(id)?.delete(res));
+  const keepalive = setInterval(() => {
+    res.write(": keepalive\n\n");
+  }, 15000);
+  req.on("close", () => {
+    clearInterval(keepalive);
+    sseClients.get(id)?.delete(res);
+  });
 });
 
 // SPA catch-all: serve index.html for client-side routes (React Router)

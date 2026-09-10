@@ -31,8 +31,8 @@ export default function ExcitationChart({ breakdown = [], tierDetail = {} }) {
     };
 
     // threshold lines
-    if (tierDetail.amber_cut) mkLine(48, Y(tierDetail.amber_cut), W - 20, Y(tierDetail.amber_cut), "#ffa63d", true);
-    if (tierDetail.red_cut) mkLine(48, Y(tierDetail.red_cut), W - 20, Y(tierDetail.red_cut), "#ff5a5a", true);
+    if (tierDetail.amber_cut) mkLine(48, Y(tierDetail.amber_cut), W - 20, Y(tierDetail.amber_cut), "#d97706", true);
+    if (tierDetail.red_cut) mkLine(48, Y(tierDetail.red_cut), W - 20, Y(tierDetail.red_cut), "#dc2626", true);
 
     // bars
     for (const p of breakdown) {
@@ -41,7 +41,7 @@ export default function ExcitationChart({ breakdown = [], tierDetail = {} }) {
       const rect = document.createElementNS(NS, "rect");
       rect.setAttribute("x", x - bw / 2); rect.setAttribute("y", Y(p.contribution));
       rect.setAttribute("width", bw); rect.setAttribute("height", H - 28 - Y(p.contribution));
-      rect.setAttribute("fill", "#4da3ff"); rect.setAttribute("opacity", "0.85"); rect.setAttribute("rx", "3");
+      rect.setAttribute("fill", "#059669"); rect.setAttribute("opacity", "0.8"); rect.setAttribute("rx", "3");
       const title = document.createElementNS(NS, "title");
       title.textContent = `${p.event_id}: ${inr(p.amount)}, +${p.contribution} (${p.burst_peers} burst peers)`;
       rect.appendChild(title);
@@ -49,7 +49,7 @@ export default function ExcitationChart({ breakdown = [], tierDetail = {} }) {
 
       const lb = document.createElementNS(NS, "text");
       lb.setAttribute("x", x); lb.setAttribute("y", H - 10);
-      lb.setAttribute("text-anchor", "middle"); lb.setAttribute("font-size", "9"); lb.setAttribute("fill", "#8b95a5");
+      lb.setAttribute("text-anchor", "middle"); lb.setAttribute("font-size", "9"); lb.setAttribute("fill", "#5f7a6b");
       lb.textContent = hhmm(p.ts);
       svg.appendChild(lb);
     }
@@ -57,7 +57,7 @@ export default function ExcitationChart({ breakdown = [], tierDetail = {} }) {
     // caption
     const cap = document.createElementNS(NS, "text");
     cap.setAttribute("x", 48); cap.setAttribute("y", 14);
-    cap.setAttribute("font-size", "10"); cap.setAttribute("fill", "#8b95a5");
+    cap.setAttribute("font-size", "10"); cap.setAttribute("fill", "#5f7a6b");
     cap.textContent = `Each bar = one transfer's share of S=${tierDetail.intensity ?? "?"} (hover for detail)`;
     svg.appendChild(cap);
   }, [breakdown, tierDetail]);

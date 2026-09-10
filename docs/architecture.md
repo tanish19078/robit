@@ -1,7 +1,7 @@
 # PRAHARI — Build Spec (read this first, then code)
 
 PS 26184. Prototype only. No live bank/LEA rails — everything external is simulated + logged.
-Product context: `docs/PRAHARI_Final.md`. This file is the contract: services, schemas, APIs, tasks.
+Product context: `README.md`. This file is the contract: services, schemas, APIs, tasks.
 
 ## 0. What ships in 36h
 
@@ -121,7 +121,7 @@ Also ship `data/normal_day.json` (negatives) to prove we don't Red-flag everythi
 - Quantile test: assert `q10 ≤ median ≤ q90` on 3 fixtures.
 - Schema test: gateway rejects bad event with 400 + error field (test it, judges will send junk).
 - No PR merges a new infra service. New dep? Must run on laptop CPU + free tier.
-- Numbers on slides come from `/api/metrics` output pasted into `docs/RESULTS.md` — no invented accuracy.
+- Numbers on slides come from `/api/metrics` output pasted into `README.md` — no invented accuracy.
 
 ## 8. Cut list (do not rebuild)
 

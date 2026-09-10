@@ -1,7 +1,7 @@
 # Agent rules — robit/
 
 You are coding in a 36h hackathon repo. Spec: `docs/architecture.md` (contract, wins on conflict).
-Context: `docs/PRAHARI_Final.md`. Keep diffs small, runnable on laptop CPU, no new infra.
+Context: `README.md`. Keep diffs small, runnable on laptop CPU, no new infra.
 
 ## Hard bans (prototype)
 
@@ -33,4 +33,4 @@ and note it as roadmap.
    `replay_all.py --scenario demo_golden_hour` and `GET /api/metrics` before moving on.
 4. If blocked >1h on PyG/Hawkes, ship the §8 fallback (NetworkX + decay formula + XGB/LR),
    keep the interface, and unblock the demo path.
-5. Paste measured `/api/metrics` into `docs/RESULTS.md`; never invent precision/latency numbers.
+5. Paste measured `/api/metrics` into `README.md`; never invent precision/latency numbers.

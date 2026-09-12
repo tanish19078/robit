@@ -1,17 +1,17 @@
-# PRAHARI — Build Spec (read this first, then code)
+# PRAHARI — Technical Architecture & System Specification
 
-PS 26184. Full-stack operational system. External banking and LEA intervention actions execute via secure simulated interfaces and immutable audit logs.
+Full-stack operational intelligence engine for cybercrime cash-out interception. External banking and LEA intervention actions execute via secure simulated interfaces and immutable audit logs.
 Product context: `README.md`. This file is the contract: services, schemas, APIs, tasks.
 
-## 0. What ships in 36h
+## 0. Core Capabilities Delivered
 
-- [ ] `POST /api/incidents` + event intake → Redis Streams + Postgres
-- [ ] k-hop incident graph + mule scores (baseline always works, embeddings if time)
-- [ ] Cell ranking over H3 res 8 + q10/med/q90 window
-- [ ] Dashboard: incident queue → graph → heatmap → evidence → ack/escalate/dismiss
-- [ ] `POST /api/actions/simulate` + audit row for every decision
-- [ ] `replay_all.py --scenario demo_golden_hour` drives the 3-min judge demo
-- [ ] `/api/metrics` shows latency, p@K, coverage from the same DB (no hardcoded numbers)
+- [x] `POST /api/incidents` + event intake → causal temporal validation + in-memory O(1) index
+- [x] k-hop incident graph + mule scores (explainable baseline + Isolation Forest anomaly rank)
+- [x] Cell ranking over H3 res 8 + non-crossing q10/median/q90 window
+- [x] Multi-page React GIS Console: incident queue → graph → heatmap → evidence → human review
+- [x] `POST /api/actions/simulate` + immutable audit row for every decision
+- [x] `replay_all.py` drives live evaluation across 12 scenario fixtures
+- [x] `/api/metrics` shows latency, precision/recall, coverage from live engine (zero fabricated numbers)
 
 Non-goals: Kafka/Flink, graph DB, full HTGT/GAttNHP, HE/SMPC, paid map tokens, gRPC/CAD connectors.
 

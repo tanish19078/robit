@@ -1,17 +1,16 @@
 # Draft: request for anonymized data collaboration (customize before sending)
 
-> Send via your college SIH SPOC / faculty mentor, not from a personal email.
-> Attach the one-page PRAHARI brief and link the repo.
+> Send via your institutional / research coordinator, not from a personal email.
+> Attach the one-page PRAHARI brief and link the repository.
 
 ---
 
-**Subject:** Institutional collaboration request — anonymized cyber-fraud data for SIH 2026 (PS 26184)
+**Subject:** Institutional collaboration request — anonymized cyber-fraud data for PRAHARI
 
 Respected Sir / Madam,
 
 We are a team building **PRAHARI**, a decision-support predictive analytics framework for
-Smart India Hackathon 2026 (Problem Statement 26184): forecasting likely
-cash-withdrawal locations from cyber-fraud complaints so banks and cyber cells
+forecasting likely cash-withdrawal locations from cyber-fraud complaints so banks and cyber cells
 can act inside the critical post-complaint window.
 
 We do **not** seek any personally identifiable or live customer data. We request,
@@ -35,5 +34,5 @@ mentor ([name, designation, contact]) is in CC and supervises this work.
 Thank you for your time and service.
 
 Sincerely,
-[Team name], SIH Team ID [____]
-[Lead name, phone] · [College]
+[Project Lead / Engineering Team]
+[Contact Information] · [Institution / Organization]

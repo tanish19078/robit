@@ -19,7 +19,7 @@ Proves the loop; doubles as regression tests (`test_smoke.py`, `e2e_check.py`).
 
 ## Rung 2 — Authorized anonymized sample (outreach in progress)
 
-Ask (via college SIH SPOC / mentor → state cyber cell or bank innovation team):
+Ask (via institutional outreach / cyber cell collaboration or bank innovation team):
 
 1. Hourly per-cluster ATM withdrawal counts (aggregated, no accounts) — calibrates `base_prior`.
 2. Small set of historical mule subgraphs with hashed IDs + shifted timestamps — trains the ranker.
@@ -27,12 +27,12 @@ Ask (via college SIH SPOC / mentor → state cyber cell or bank innovation team)
    updates leave (see `ml-service/federated/fedavg.py`, leakage-tested).
 
 Offer upfront: on-prem/federated execution, no raw rows leave their network,
-NDA + academic-use-only, DPDP-aligned audit log (every prediction carries
+NDA + evaluation terms, DPDP-aligned audit log (every prediction carries
 `model_version` + reviewer decision in `audit_log`).
 
 Draft request letter: `docs/DATA_REQUEST_LETTER.md`.
 
-## Rung 3 — Live pilot (post-SIH, MoU)
+## Rung 3 — Live pilot (Institutional MoU)
 
 NCRP/CFCFRMS webhook + bank-side connector under MoU, security review, DPDP
 compliance. Architecture isolates this to adapter code: the mock adapter

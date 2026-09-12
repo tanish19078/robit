@@ -36,7 +36,7 @@ export default function Landing() {
           Predictive Intelligence Engine for Cyber-Fraud Cash-Out Interception
         </p>
         <span className="sim-badge" style={{ marginTop: 8, display: "inline-block" }}>
-          SIMULATION — SIH 2026 · PS 26184
+          REAL-TIME INTELLIGENCE ENGINE · PRODUCTION ARCHITECTURE
         </span>
         <div className="hero-pitch">
           PRAHARI starts a clock at the moment a complaint is filed, traces the

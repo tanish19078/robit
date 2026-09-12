@@ -25,7 +25,7 @@ def query(bbox):
          f"node['amenity'='bank']({s},{w},{n},{e}););out 300;")
     body = urllib.parse.urlencode({"data": q}).encode()
     headers = {"content-type": "application/x-www-form-urlencoded",
-               "User-Agent": "PRAHARI-SIH2026-student-demo/0.1 (contact: sih-team)"}
+               "User-Agent": "PRAHARI-Deployment-Engine/1.0 (contact: prahari-project)"}
     last = None
     for mirror in OVERPASS_MIRRORS:
         try:

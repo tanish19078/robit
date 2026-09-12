@@ -1,6 +1,6 @@
 # PRAHARI: Live Demonstration Master Brief
 
-**Smart India Hackathon 2026** · **Problem Statement ID: 26184**  
+**Predictive Intelligence Engine for Cyber-Fraud Cash-Out Interception**  
 *Evaluation Strategy: 3-Minute Live Walkthrough + 2-Minute Technical Q&A*
 
 ---

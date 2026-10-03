@@ -144,6 +144,18 @@ app.post("/api/events/attributes", (req, res) => addEvent("shared_attribute", re
 // O(1) index lookup per incident
 const incidentEvents = (id) => eventsByIncident.get(id) || [];
 
+// Last alert per incident, keyed on how many events it was computed from.
+// A GET that re-ran the pipeline appended a fresh alert every time, so merely
+// opening an incident twice double-counted it in /api/metrics.
+const forecastCache = new Map(); // incident_id -> { version, alert }
+function rebuildForecastCache() {
+  forecastCache.clear();
+  for (const a of db.alerts) {
+    if (a.event_version != null) forecastCache.set(a.incident_id, { version: a.event_version, alert: a });
+  }
+}
+rebuildForecastCache();
+
 app.get("/api/incidents/:id/graph", async (req, res) => {
   const inc = db.incidents[req.params.id];
   if (!inc) return bad(res, 404, "unknown incident");
@@ -152,9 +164,15 @@ app.get("/api/incidents/:id/graph", async (req, res) => {
   } catch (err) { return bad(res, 502, String(err.message || err)); }
 });
 
-async function forecastFor(inc) {
+async function forecastFor(inc, { force = false } = {}) {
   const events = incidentEvents(inc.incident_id);
   if (!events.length) fail(400, "no events yet");
+  // event count is the version: any accepted ingest invalidates the cached alert
+  const event_version = events.length;
+  if (!force) {
+    const hit = forecastCache.get(inc.incident_id);
+    if (hit && hit.version === event_version) return hit.alert;
+  }
   let f;
   try {
     f = await ml("/ml/forecast", { incident: inc, events });
@@ -185,8 +203,10 @@ async function forecastFor(inc) {
     status: "open", ts: new Date().toISOString(), complaint_clock_min,
     alert_latency_ms: Date.now() - (inc.wall_t0 || Date.now()),
     intensity: f.intensity ?? null,
+    event_version,
   };
   db.alerts.push(alert);
+  forecastCache.set(inc.incident_id, { version: event_version, alert });
   db.audit.push({ audit_id: `AUD-${db.auditSeq++}`, incident_id: inc.incident_id, alert_id: alert.alert_id,
     prediction: { tier: risk_tier, top_cell: top.h3_cell, window: alert.cashout_window_minutes },
     decision: null, simulated_action: null, model_version: alert.model_version, ts: alert.ts });
@@ -195,13 +215,17 @@ async function forecastFor(inc) {
   return alert;
 }
 
-app.get("/api/incidents/:id/forecast", async (req, res) => {
-  const inc = db.incidents[req.params.id];
-  if (!inc) return bad(res, 404, "unknown incident");
-  try {
-    return res.json(await forecastFor(inc));
-  } catch (err) { return bad(res, err.status || 500, err.message); }
-});
+// GET is idempotent: returns the cached alert until new events arrive.
+// POST forces a fresh pipeline run against the same events.
+for (const [method, force] of [["get", false], ["post", true]]) {
+  app[method]("/api/incidents/:id/forecast", async (req, res) => {
+    const inc = db.incidents[req.params.id];
+    if (!inc) return bad(res, 404, "unknown incident");
+    try {
+      return res.json(await forecastFor(inc, { force }));
+    } catch (err) { return bad(res, err.status || 500, err.message); }
+  });
+}
 
 const SEED_SCENARIOS = ["demo_golden_hour", "fraud_multi_path", "fraud_uptown",
   "fraud_fanout", "fraud_withdrawal", "dual_withdrawal", "normal_day",

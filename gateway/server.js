@@ -25,11 +25,14 @@ try {
 // stores written before auditSeq existed: resume past the rows already on disk
 if (db.auditSeq == null) db.auditSeq = db.audit.length + 1;
 const eventsByIncident = new Map();
+const seenEventIds = new Set(); // O(1) dedupe; rebuilt from the store on boot
 function indexAllEvents() {
   eventsByIncident.clear();
+  seenEventIds.clear();
   for (const e of db.events) {
     if (!eventsByIncident.has(e.incident_id)) eventsByIncident.set(e.incident_id, []);
     eventsByIncident.get(e.incident_id).push(e);
+    seenEventIds.add(e.event_id);
   }
 }
 indexAllEvents();
@@ -118,9 +121,10 @@ function ingestEvent(type, e) {
   const inc = db.incidents[e.incident_id];
   if (!inc) fail(404, "unknown incident_id");
   if (Date.parse(e.ts) < Date.parse(inc.t0)) fail(400, "ts before complaint t0");
-  if (db.events.some((x) => x.event_id === e.event_id)) return { duplicate: e.event_id };
+  if (seenEventIds.has(e.event_id)) return { duplicate: e.event_id };
   const stored = { ...e, type };
   db.events.push(stored);
+  seenEventIds.add(e.event_id);
   if (!eventsByIncident.has(e.incident_id)) eventsByIncident.set(e.incident_id, []);
   eventsByIncident.get(e.incident_id).push(stored);
   save();

@@ -12,7 +12,7 @@ export default function MoneyGraph({ graph, muleScores = {} }) {
 
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg || !graph?.nodes?.length) { svg.innerHTML = ""; return; }
+   if (!svg || !graph?.nodes?.length) { if (svg) svg.innerHTML = ""; return; }
 
     const W = svg.clientWidth || 540;
     const H = 260;

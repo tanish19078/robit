@@ -297,11 +297,12 @@ app.get("/api/stream/:id", (req, res) => {
   });
 });
 
+// Unmatched API paths get a prompt JSON 404. Without this the SPA catch-all
+// below swallows them: it only responds for non-/api/ paths, so an unknown
+// endpoint returned no response at all and the client hung until timeout.
+app.all("/api/*", (req, res) => bad(res, 404, `unknown endpoint ${req.method} ${req.path}`));
+
 // SPA catch-all: serve index.html for client-side routes (React Router)
-app.get("*", (req, res) => {
-  if (!req.path.startsWith("/api/")) {
-    res.sendFile(path.join(FRONTEND_DIR, "index.html"));
-  }
-});
+app.get("*", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "index.html")));
 
 app.listen(PORT, () => console.log(`gateway :${PORT} (ml=${ML_URL}) frontend=${FRONTEND_DIR}`));

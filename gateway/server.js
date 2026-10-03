@@ -14,12 +14,16 @@ const MODEL_VERSION = process.env.MODEL_VERSION || "prahari-0.1-dev";
 const DATA_DIR = process.env.DATA_DIR || new URL("../data/", import.meta.url);
 const dataFile = (name) => typeof DATA_DIR === "string" ? path.join(DATA_DIR, name) : new URL(name, DATA_DIR);
 const STORE_FILE = process.env.STORE_FILE || dataFile("gateway_store.json");
-const db = { incidents: {}, events: [], alerts: [], audit: [], seq: 1 };
+// seq numbers alerts; auditSeq numbers audit rows. Separate counters: sharing one
+// made every audit row in a request reuse the alert's number (duplicate audit_ids).
+const db = { incidents: {}, events: [], alerts: [], audit: [], seq: 1, auditSeq: 1 };
 try {
   const saved = JSON.parse(await readFile(STORE_FILE, "utf8"));
   Object.assign(db, saved);
   console.log(`store: loaded ${Object.keys(db.incidents).length} incidents, ${db.events.length} events`);
 } catch { /* first boot: empty store */ }
+// stores written before auditSeq existed: resume past the rows already on disk
+if (db.auditSeq == null) db.auditSeq = db.audit.length + 1;
 const eventsByIncident = new Map();
 function indexAllEvents() {
   eventsByIncident.clear();
@@ -179,7 +183,7 @@ async function forecastFor(inc) {
     intensity: f.intensity ?? null,
   };
   db.alerts.push(alert);
-  db.audit.push({ audit_id: `AUD-${db.seq}`, incident_id: inc.incident_id, alert_id: alert.alert_id,
+  db.audit.push({ audit_id: `AUD-${db.auditSeq++}`, incident_id: inc.incident_id, alert_id: alert.alert_id,
     prediction: { tier: risk_tier, top_cell: top.h3_cell, window: alert.cashout_window_minutes },
     decision: null, simulated_action: null, model_version: alert.model_version, ts: alert.ts });
   save();
@@ -226,7 +230,7 @@ for (const action of ["acknowledge", "escalate", "dismiss"]) {
     if (!a) return bad(res, 404, "unknown alert");
     a.status = action === "dismiss" ? "dismissed" : action === "escalate" ? "escalated" : "acknowledged";
     a.review = { by: req.body?.by || "analyst", reason: req.body?.reason || "", ts: new Date().toISOString() };
-    db.audit.push({ audit_id: `AUD-${db.seq}`, incident_id: a.incident_id, alert_id: a.alert_id,
+    db.audit.push({ audit_id: `AUD-${db.auditSeq++}`, incident_id: a.incident_id, alert_id: a.alert_id,
       prediction: null, decision: action, simulated_action: null,
       model_version: a.model_version, ts: a.review.ts });
     save();
@@ -239,7 +243,7 @@ app.post("/api/actions/simulate", (req, res) => {
   const a = db.alerts.find((x) => x.alert_id === alert_id);
   if (!a) return bad(res, 404, "unknown alert");
   if (!["step_up", "hold_request", "patrol_notify"].includes(action)) return bad(res, 400, "bad action");
-  const row = { audit_id: `AUD-${db.seq}`, incident_id: a.incident_id, alert_id,
+  const row = { audit_id: `AUD-${db.auditSeq++}`, incident_id: a.incident_id, alert_id,
     prediction: null, decision: a.status, simulated_action: `${action} [SIMULATION]`,
     model_version: a.model_version, ts: new Date().toISOString() };
   db.audit.push(row);

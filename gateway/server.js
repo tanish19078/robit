@@ -14,18 +14,25 @@ const MODEL_VERSION = process.env.MODEL_VERSION || "prahari-0.1-dev";
 const DATA_DIR = process.env.DATA_DIR || new URL("../data/", import.meta.url);
 const dataFile = (name) => typeof DATA_DIR === "string" ? path.join(DATA_DIR, name) : new URL(name, DATA_DIR);
 const STORE_FILE = process.env.STORE_FILE || dataFile("gateway_store.json");
-const db = { incidents: {}, events: [], alerts: [], audit: [], seq: 1 };
+// seq numbers alerts; auditSeq numbers audit rows. Separate counters: sharing one
+// made every audit row in a request reuse the alert's number (duplicate audit_ids).
+const db = { incidents: {}, events: [], alerts: [], audit: [], seq: 1, auditSeq: 1 };
 try {
   const saved = JSON.parse(await readFile(STORE_FILE, "utf8"));
   Object.assign(db, saved);
   console.log(`store: loaded ${Object.keys(db.incidents).length} incidents, ${db.events.length} events`);
 } catch { /* first boot: empty store */ }
+// stores written before auditSeq existed: resume past the rows already on disk
+if (db.auditSeq == null) db.auditSeq = db.audit.length + 1;
 const eventsByIncident = new Map();
+const seenEventIds = new Set(); // O(1) dedupe; rebuilt from the store on boot
 function indexAllEvents() {
   eventsByIncident.clear();
+  seenEventIds.clear();
   for (const e of db.events) {
     if (!eventsByIncident.has(e.incident_id)) eventsByIncident.set(e.incident_id, []);
     eventsByIncident.get(e.incident_id).push(e);
+    seenEventIds.add(e.event_id);
   }
 }
 indexAllEvents();
@@ -84,8 +91,18 @@ function fail(status, message) { throw Object.assign(new Error(message), { statu
 function upsertIncident(o) {
   const { incident_id, t0, amount, src_hash, channel } = o || {};
   if (!incident_id || !t0 || !src_hash) fail(400, "incident_id, t0, src_hash required");
-  if (db.incidents[incident_id]) return { duplicate: incident_id };
   if (Number.isNaN(Date.parse(t0))) fail(400, "bad t0");
+  const existing = db.incidents[incident_id];
+  if (existing) {
+    // Re-registering the same anchor is idempotent. A *different* anchor under a
+    // live id used to be swallowed silently, keeping the first t0 and src_hash —
+    // the incoming events then failed the causality guard and the whole complaint
+    // vanished with no error surfaced anywhere.
+    if (existing.t0 !== t0 || existing.src_hash !== src_hash) {
+      fail(409, `incident_id ${incident_id} already anchored to t0=${existing.t0} src_hash=${existing.src_hash}`);
+    }
+    return { duplicate: incident_id };
+  }
   db.incidents[incident_id] = { incident_id, t0, amount, src_hash, channel,
     victim_lat: o.victim_lat ?? 28.6285, victim_lon: o.victim_lon ?? 77.2137, wall_t0: Date.now() };
   save();
@@ -114,9 +131,10 @@ function ingestEvent(type, e) {
   const inc = db.incidents[e.incident_id];
   if (!inc) fail(404, "unknown incident_id");
   if (Date.parse(e.ts) < Date.parse(inc.t0)) fail(400, "ts before complaint t0");
-  if (db.events.some((x) => x.event_id === e.event_id)) return { duplicate: e.event_id };
+  if (seenEventIds.has(e.event_id)) return { duplicate: e.event_id };
   const stored = { ...e, type };
   db.events.push(stored);
+  seenEventIds.add(e.event_id);
   if (!eventsByIncident.has(e.incident_id)) eventsByIncident.set(e.incident_id, []);
   eventsByIncident.get(e.incident_id).push(stored);
   save();
@@ -136,6 +154,18 @@ app.post("/api/events/attributes", (req, res) => addEvent("shared_attribute", re
 // O(1) index lookup per incident
 const incidentEvents = (id) => eventsByIncident.get(id) || [];
 
+// Last alert per incident, keyed on how many events it was computed from.
+// A GET that re-ran the pipeline appended a fresh alert every time, so merely
+// opening an incident twice double-counted it in /api/metrics.
+const forecastCache = new Map(); // incident_id -> { version, alert }
+function rebuildForecastCache() {
+  forecastCache.clear();
+  for (const a of db.alerts) {
+    if (a.event_version != null) forecastCache.set(a.incident_id, { version: a.event_version, alert: a });
+  }
+}
+rebuildForecastCache();
+
 app.get("/api/incidents/:id/graph", async (req, res) => {
   const inc = db.incidents[req.params.id];
   if (!inc) return bad(res, 404, "unknown incident");
@@ -144,9 +174,15 @@ app.get("/api/incidents/:id/graph", async (req, res) => {
   } catch (err) { return bad(res, 502, String(err.message || err)); }
 });
 
-async function forecastFor(inc) {
+async function forecastFor(inc, { force = false } = {}) {
   const events = incidentEvents(inc.incident_id);
   if (!events.length) fail(400, "no events yet");
+  // event count is the version: any accepted ingest invalidates the cached alert
+  const event_version = events.length;
+  if (!force) {
+    const hit = forecastCache.get(inc.incident_id);
+    if (hit && hit.version === event_version) return hit.alert;
+  }
   let f;
   try {
     f = await ml("/ml/forecast", { incident: inc, events });
@@ -177,9 +213,11 @@ async function forecastFor(inc) {
     status: "open", ts: new Date().toISOString(), complaint_clock_min,
     alert_latency_ms: Date.now() - (inc.wall_t0 || Date.now()),
     intensity: f.intensity ?? null,
+    event_version,
   };
   db.alerts.push(alert);
-  db.audit.push({ audit_id: `AUD-${db.seq}`, incident_id: inc.incident_id, alert_id: alert.alert_id,
+  forecastCache.set(inc.incident_id, { version: event_version, alert });
+  db.audit.push({ audit_id: `AUD-${db.auditSeq++}`, incident_id: inc.incident_id, alert_id: alert.alert_id,
     prediction: { tier: risk_tier, top_cell: top.h3_cell, window: alert.cashout_window_minutes },
     decision: null, simulated_action: null, model_version: alert.model_version, ts: alert.ts });
   save();
@@ -187,13 +225,17 @@ async function forecastFor(inc) {
   return alert;
 }
 
-app.get("/api/incidents/:id/forecast", async (req, res) => {
-  const inc = db.incidents[req.params.id];
-  if (!inc) return bad(res, 404, "unknown incident");
-  try {
-    return res.json(await forecastFor(inc));
-  } catch (err) { return bad(res, err.status || 500, err.message); }
-});
+// GET is idempotent: returns the cached alert until new events arrive.
+// POST forces a fresh pipeline run against the same events.
+for (const [method, force] of [["get", false], ["post", true]]) {
+  app[method]("/api/incidents/:id/forecast", async (req, res) => {
+    const inc = db.incidents[req.params.id];
+    if (!inc) return bad(res, 404, "unknown incident");
+    try {
+      return res.json(await forecastFor(inc, { force }));
+    } catch (err) { return bad(res, err.status || 500, err.message); }
+  });
+}
 
 const SEED_SCENARIOS = ["demo_golden_hour", "fraud_multi_path", "fraud_uptown",
   "fraud_fanout", "fraud_withdrawal", "dual_withdrawal", "normal_day",
@@ -211,10 +253,16 @@ app.post("/api/demo/seed", async (_req, res) => {
         victim_lat: sc.victim_lat, victim_lon: sc.victim_lon });
       for (const e of sc.events) ingestEvent(SEED_ROUTES[e.type] || "transfer", e);
       const a = await forecastFor(db.incidents[sc.incident_id]);
-      out.push({ incident: sc.incident_id, tier: a.risk_tier });
-    } catch (err) { out.push({ incident: name, error: String(err.message || err) }); }
+      out.push({ scenario: name, incident: sc.incident_id, tier: a.risk_tier });
+    } catch (err) { out.push({ scenario: name, error: String(err.message || err) }); }
   }
-  res.json({ seeded: out });
+  // A scenario that fails to seed used to be reported only as an entry buried in
+  // a 200 body, so a silently dropped fixture looked like a clean seed.
+  const failed = out.filter((r) => r.error);
+  res.status(failed.length ? 207 : 200).json({
+    seeded: out,
+    summary: { total: out.length, ok: out.length - failed.length, failed: failed.length },
+  });
 });
 
 app.get("/api/incidents/:id/alerts", (req, res) =>
@@ -226,7 +274,7 @@ for (const action of ["acknowledge", "escalate", "dismiss"]) {
     if (!a) return bad(res, 404, "unknown alert");
     a.status = action === "dismiss" ? "dismissed" : action === "escalate" ? "escalated" : "acknowledged";
     a.review = { by: req.body?.by || "analyst", reason: req.body?.reason || "", ts: new Date().toISOString() };
-    db.audit.push({ audit_id: `AUD-${db.seq}`, incident_id: a.incident_id, alert_id: a.alert_id,
+    db.audit.push({ audit_id: `AUD-${db.auditSeq++}`, incident_id: a.incident_id, alert_id: a.alert_id,
       prediction: null, decision: action, simulated_action: null,
       model_version: a.model_version, ts: a.review.ts });
     save();
@@ -239,7 +287,7 @@ app.post("/api/actions/simulate", (req, res) => {
   const a = db.alerts.find((x) => x.alert_id === alert_id);
   if (!a) return bad(res, 404, "unknown alert");
   if (!["step_up", "hold_request", "patrol_notify"].includes(action)) return bad(res, 400, "bad action");
-  const row = { audit_id: `AUD-${db.seq}`, incident_id: a.incident_id, alert_id,
+  const row = { audit_id: `AUD-${db.auditSeq++}`, incident_id: a.incident_id, alert_id,
     prediction: null, decision: a.status, simulated_action: `${action} [SIMULATION]`,
     model_version: a.model_version, ts: new Date().toISOString() };
   db.audit.push(row);
@@ -293,11 +341,12 @@ app.get("/api/stream/:id", (req, res) => {
   });
 });
 
+// Unmatched API paths get a prompt JSON 404. Without this the SPA catch-all
+// below swallows them: it only responds for non-/api/ paths, so an unknown
+// endpoint returned no response at all and the client hung until timeout.
+app.all("/api/*", (req, res) => bad(res, 404, `unknown endpoint ${req.method} ${req.path}`));
+
 // SPA catch-all: serve index.html for client-side routes (React Router)
-app.get("*", (req, res) => {
-  if (!req.path.startsWith("/api/")) {
-    res.sendFile(path.join(FRONTEND_DIR, "index.html"));
-  }
-});
+app.get("*", (_req, res) => res.sendFile(path.join(FRONTEND_DIR, "index.html")));
 
 app.listen(PORT, () => console.log(`gateway :${PORT} (ml=${ML_URL}) frontend=${FRONTEND_DIR}`));

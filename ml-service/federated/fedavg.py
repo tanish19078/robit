@@ -34,7 +34,7 @@ def client_update(fixture_names):
         fix = load_fixture(name)
         sg = build_khop(fix["events"], [fix["src_hash"]], depth=3)
         at = max(e["ts"] for e in fix["events"])
-        order, rows, roots, _ = node_features(sg, fix["events"], fix["t0"], at)
+        order, rows, roots, _ = node_features(sg, fix["t0"], at)
         gt = fix["ground_truth"]
         fraud = set(gt["true_path"][1:]) if gt.get("true_cell") else set()
         for nid, r in zip(order, rows):

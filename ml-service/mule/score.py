@@ -29,7 +29,7 @@ def _anomaly_rank(feat_rows):
     return [0.5 for _ in scores] if hi - lo < 1e-9 else [(hi - s) / (hi - lo) for s in scores]
 
 
-def node_features(subgraph, events, t0_str, at_time_str):
+def node_features(subgraph, t0_str, at_time_str):
     """(order, feat_rows, roots, aux) shared by the scorer and the federated demo."""
     t0 = parse_ts(t0_str)
     now = parse_ts(at_time_str)
@@ -52,7 +52,10 @@ def node_features(subgraph, events, t0_str, at_time_str):
             shared_links[s] = shared_links.get(s, 0) + 1
             shared_links[d] = shared_links.get(d, 0) + 1
 
-    roots = set(list(hop)[:1])
+    # Roots are the complaint anchors, quarantined from anomaly scoring so a victim
+    # can never be ranked as a mule. build_khop reports them explicitly; the old
+    # list(hop)[:1] relied on dict insertion order and kept only the first.
+    roots = set(subgraph.get("roots") or list(hop)[:1])
     feat_rows, order = [], []
     for node in subgraph.get("nodes", []):
         nid = node["id"]
@@ -72,8 +75,8 @@ def node_features(subgraph, events, t0_str, at_time_str):
     return order, feat_rows, roots, aux
 
 
-def score_nodes(subgraph, events, t0_str, weights, at_time_str):
-    order, feat_rows, roots, aux = node_features(subgraph, events, t0_str, at_time_str)
+def score_nodes(subgraph, t0_str, weights, at_time_str):
+    order, feat_rows, roots, aux = node_features(subgraph, t0_str, at_time_str)
     out_5m, in_5m, out_dsts = aux["out_5m"], aux["in_5m"], aux["out_dsts"]
     shared_links, hop, first_seen = aux["shared_links"], aux["hop"], aux["first_seen"]
 

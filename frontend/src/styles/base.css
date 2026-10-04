@@ -1,0 +1,101 @@
+/* ===========================================================================
+   Reset, document defaults, focus and motion.
+   Everything here speaks in tokens — no literal colors below this line.
+   =========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  background: var(--surface-page);
+  color: var(--ink-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+svg {
+  display: block;
+}
+
+/* Visible focus for keyboard users only. The queue rows are focusable, so this
+   is the whole keyboard story for the table — without it the rebuild would
+   just be a prettier version of the same accessibility gap. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Screen-reader-only text: used to carry tier names and chart summaries that
+   sighted users get from color and shape. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Honour the OS reduced-motion setting rather than animating regardless. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* In forced-colors mode, let the OS palette through and keep structure legible
+   via borders rather than fills. */
+@media (forced-colors: active) {
+  .card,
+  .btn,
+  .badge {
+    border: 1px solid CanvasText;
+  }
+}

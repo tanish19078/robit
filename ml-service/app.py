@@ -41,7 +41,7 @@ def run_pipeline(incident, events, at_time=None):
     at_time = at_time or max(e["ts"] for e in events)
     roots = [incident["src_hash"]]
     subgraph = build_khop(events, roots, depth=3)
-    mule = score_nodes(subgraph, events, t0, CONFIG["weights"], at_time)
+    mule = score_nodes(subgraph, t0, CONFIG["weights"], at_time)
     cells, exc, parts = score_cells(
         events, TERMINALS, incident.get("victim_lat", 28.6285),
         incident.get("victim_lon", 77.2137), at_time,
@@ -73,7 +73,7 @@ if FastAPI:
     def mule(req: ForecastReq):
         at = req.at_time or max(e["ts"] for e in req.events)
         sg = build_khop(req.events, [req.incident["src_hash"]], depth=3)
-        return {"nodes": score_nodes(sg, req.events, req.incident["t0"], CONFIG["weights"], at)}
+        return {"nodes": score_nodes(sg, req.incident["t0"], CONFIG["weights"], at)}
 
     @app.post("/ml/forecast")
     def forecast(req: ForecastReq):

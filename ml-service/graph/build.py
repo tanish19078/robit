@@ -76,7 +76,7 @@ def build_khop(events, roots, depth=3):
 
     return {"nodes": nodes, "edges": scoped_edges,
             "path": trace_path(roots, adj_out), "hop": hop,
-            "first_seen": first_seen}
+            "first_seen": first_seen, "roots": list(roots)}
 
 
 def trace_path(roots, adj_out):

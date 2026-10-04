@@ -91,8 +91,18 @@ function fail(status, message) { throw Object.assign(new Error(message), { statu
 function upsertIncident(o) {
   const { incident_id, t0, amount, src_hash, channel } = o || {};
   if (!incident_id || !t0 || !src_hash) fail(400, "incident_id, t0, src_hash required");
-  if (db.incidents[incident_id]) return { duplicate: incident_id };
   if (Number.isNaN(Date.parse(t0))) fail(400, "bad t0");
+  const existing = db.incidents[incident_id];
+  if (existing) {
+    // Re-registering the same anchor is idempotent. A *different* anchor under a
+    // live id used to be swallowed silently, keeping the first t0 and src_hash —
+    // the incoming events then failed the causality guard and the whole complaint
+    // vanished with no error surfaced anywhere.
+    if (existing.t0 !== t0 || existing.src_hash !== src_hash) {
+      fail(409, `incident_id ${incident_id} already anchored to t0=${existing.t0} src_hash=${existing.src_hash}`);
+    }
+    return { duplicate: incident_id };
+  }
   db.incidents[incident_id] = { incident_id, t0, amount, src_hash, channel,
     victim_lat: o.victim_lat ?? 28.6285, victim_lon: o.victim_lon ?? 77.2137, wall_t0: Date.now() };
   save();
@@ -243,10 +253,16 @@ app.post("/api/demo/seed", async (_req, res) => {
         victim_lat: sc.victim_lat, victim_lon: sc.victim_lon });
       for (const e of sc.events) ingestEvent(SEED_ROUTES[e.type] || "transfer", e);
       const a = await forecastFor(db.incidents[sc.incident_id]);
-      out.push({ incident: sc.incident_id, tier: a.risk_tier });
-    } catch (err) { out.push({ incident: name, error: String(err.message || err) }); }
+      out.push({ scenario: name, incident: sc.incident_id, tier: a.risk_tier });
+    } catch (err) { out.push({ scenario: name, error: String(err.message || err) }); }
   }
-  res.json({ seeded: out });
+  // A scenario that fails to seed used to be reported only as an entry buried in
+  // a 200 body, so a silently dropped fixture looked like a clean seed.
+  const failed = out.filter((r) => r.error);
+  res.status(failed.length ? 207 : 200).json({
+    seeded: out,
+    summary: { total: out.length, ok: out.length - failed.length, failed: failed.length },
+  });
 });
 
 app.get("/api/incidents/:id/alerts", (req, res) =>

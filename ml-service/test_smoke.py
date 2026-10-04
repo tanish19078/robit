@@ -57,18 +57,48 @@ def check_fixture(name, mode):
         print(f"[{name}] OK (amber via fusion cap)")
 
 
+FIXTURES = [
+    ("demo_golden_hour.json", "red"),
+    ("fraud_multi_path.json", "red"),
+    ("fraud_uptown.json", "red"),
+    ("fraud_fanout.json", "red"),
+    ("fraud_withdrawal.json", "critical"),
+    ("dual_withdrawal.json", "critical"),
+    ("normal_day.json", "green"),
+    ("salary_rent.json", "green"),
+    ("family_remittance.json", "green"),
+    ("business_payment.json", "green"),
+    ("slow_transfer.json", "green"),
+    ("repeat_vendor.json", "capped"),
+]
+
+
+def check_fixture_ids():
+    """incident_ids must be unique across fixtures, and events must point at their own.
+
+    A collision is invisible to the rest of this file, because every fixture runs
+    in isolation here and never shares an id space. It is equally invisible to
+    e2e_check.py, which replays only four scenarios. But /api/demo/seed loads all
+    twelve into one gateway: the second fixture to claim an id hit the duplicate
+    guard, kept the first fixture's t0, and every one of its events was then
+    rejected by the causality check -- dropping that scenario from the demo
+    entirely. normal_day and dual_withdrawal both claimed INC-2026-00052 this way.
+    """
+    seen = {}
+    for name, _mode in FIXTURES:
+        fix = load(name)
+        iid = fix["incident_id"]
+        assert iid not in seen, f"{name} reuses incident_id {iid} (held by {seen[iid]})"
+        seen[iid] = name
+        for e in fix["events"]:
+            assert e["incident_id"] == iid, \
+                f"{name}: event {e['event_id']} carries incident_id {e['incident_id']}, expected {iid}"
+    print(f"[fixture-ids] OK ({len(seen)} unique ids across {len(FIXTURES)} fixtures)")
+
+
 if __name__ == "__main__":
-    check_fixture("demo_golden_hour.json", "red")
-    check_fixture("fraud_multi_path.json", "red")
-    check_fixture("fraud_uptown.json", "red")
-    check_fixture("fraud_fanout.json", "red")
-    check_fixture("fraud_withdrawal.json", "critical")
-    check_fixture("dual_withdrawal.json", "critical")
-    check_fixture("normal_day.json", "green")
-    check_fixture("salary_rent.json", "green")
-    check_fixture("family_remittance.json", "green")
-    check_fixture("business_payment.json", "green")
-    check_fixture("slow_transfer.json", "green")
-    check_fixture("repeat_vendor.json", "capped")
+    check_fixture_ids()
+    for name, mode in FIXTURES:
+        check_fixture(name, mode)
     print("SMOKE PASS")
 

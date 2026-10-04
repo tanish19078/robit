@@ -1,0 +1,433 @@
+/* ===========================================================================
+   Component primitives. Every rule speaks in tokens so light/dark swap in
+   one place, and so pages stop carrying inline style objects.
+   =========================================================================== */
+
+/* --- card -------------------------------------------------------------- */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--s4);
+  box-shadow: var(--shadow-1);
+}
+.card-pad-0 {
+  padding: 0;
+  overflow: hidden;
+}
+
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+.card-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-secondary);
+}
+.card-note {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+/* Lead card: the one thing on the page that should win the eye. */
+.card-lead {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-2);
+}
+
+/* --- buttons ----------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 34px;
+  padding: var(--s2) var(--s4);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink-primary);
+  font-size: var(--text-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur), border-color var(--dur), color var(--dur);
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--surface-sunken);
+}
+.btn-primary {
+  background: var(--brand);
+  color: var(--brand-on);
+}
+.btn-primary:hover {
+  background: var(--brand-hover);
+}
+.btn-ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink-primary);
+}
+.btn-ghost:hover {
+  background: var(--surface-2);
+}
+.btn-danger {
+  background: var(--status-critical);
+  color: #fff;
+}
+.btn-danger:hover {
+  filter: brightness(1.08);
+}
+.btn-sm {
+  min-height: 28px;
+  padding: var(--s1) var(--s3);
+  font-size: var(--text-sm);
+}
+.btn-lg {
+  min-height: 42px;
+  padding: var(--s3) var(--s6);
+  font-size: var(--text-md);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-toggle[aria-pressed="true"] {
+  background: var(--brand-wash);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+/* --- inputs ------------------------------------------------------------ */
+.select {
+  min-height: 34px;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  font-size: var(--text-base);
+}
+
+/* --- tier badge -------------------------------------------------------- */
+/* Icon + text always travel together. On the light surface Amber and Red sit
+   below 3:1, so hue alone is never sufficient — removing the glyph or the
+   label would break the encoding, not just the styling. */
+.tier {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s3);
+  border-radius: var(--r-md);
+  font-size: var(--text-base);
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.tier svg {
+  flex: none;
+}
+.tier-lg {
+  padding: var(--s3) var(--s4);
+  font-size: var(--text-xl);
+  border-radius: var(--r-lg);
+}
+
+.tier-green {
+  background: var(--status-good-wash);
+  color: var(--status-good);
+  border-color: var(--status-good);
+}
+.tier-amber {
+  background: var(--status-warning-wash);
+  color: var(--status-warning);
+  border-color: var(--status-warning);
+}
+.tier-red {
+  background: var(--status-serious-wash);
+  color: var(--status-serious);
+  border-color: var(--status-serious);
+}
+.tier-critical {
+  background: var(--status-critical-wash);
+  color: var(--status-critical);
+  border-color: var(--status-critical);
+}
+.tier-unknown {
+  background: var(--surface-2);
+  color: var(--ink-secondary);
+  border-color: var(--line);
+}
+
+/* Amber/serious text on a light wash needs darker ink to stay readable at
+   small sizes; the badge keeps the status hue on its border and glyph. */
+:root:not([data-theme="dark"]) .tier-amber {
+  color: #8a5a00;
+}
+:root:not([data-theme="dark"]) .tier-red {
+  color: #9c4418;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .tier-amber {
+    color: var(--status-warning);
+  }
+  :root:where(:not([data-theme="light"])) .tier-red {
+    color: var(--status-serious);
+  }
+}
+
+/* --- stat tile --------------------------------------------------------- */
+/* Values wear ink, never a series color, and proportional figures — tabular
+   digits make large numbers look loose. */
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.stat-value {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--ink-primary);
+  line-height: 1.1;
+}
+.stat-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-secondary);
+}
+.stat-note {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+.hero-value {
+  font-size: var(--text-hero);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--ink-primary);
+}
+
+/* --- table ------------------------------------------------------------- */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+.table th,
+.table td {
+  padding: var(--s3);
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.table th {
+  background: var(--surface-sunken);
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+.table-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.table-row-link {
+  cursor: pointer;
+  transition: background var(--dur);
+}
+.table-row-link:hover,
+.table-row-link:focus-visible {
+  background: var(--brand-wash);
+}
+
+/* Below the breakpoint each row becomes its own labelled card. Headers are
+   hidden and each cell carries its label from data-label, so a narrow screen
+   gets a readable list instead of a horizontal scrollbar. */
+@media (max-width: 760px) {
+  .table-cards thead {
+    display: none;
+  }
+  .table-cards tbody tr {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--s1) var(--s3);
+    padding: var(--s3);
+    border-bottom: 1px solid var(--line);
+  }
+  .table-cards tbody td {
+    display: contents;
+    border: none;
+    padding: 0;
+  }
+  .table-cards tbody td::before {
+    content: attr(data-label);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-secondary);
+  }
+  .table-cards .table-num {
+    text-align: left;
+  }
+}
+
+/* --- meter (ratio against a limit) ------------------------------------- */
+.meter {
+  display: block;
+  height: 10px;
+  border-radius: var(--r-full);
+  background: var(--seq-track);
+  overflow: hidden;
+}
+.meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--seq-450);
+}
+/* Emphasis form: the forecast cell takes the accent, the rest recede. */
+.meter-fill-lead {
+  background: var(--seq-450);
+}
+.meter-fill-rest {
+  background: var(--seq-deemphasis);
+}
+
+/* --- misc -------------------------------------------------------------- */
+.empty {
+  padding: var(--s6) var(--s4);
+  text-align: center;
+  color: var(--ink-secondary);
+  font-size: var(--text-base);
+}
+
+.skeleton {
+  border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-sunken) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+  animation: skeleton 1.2s ease-in-out infinite;
+}
+@keyframes skeleton {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* Refetch holds the previous render at reduced opacity rather than flashing a
+   skeleton and jumping the layout. */
+.is-stale {
+  opacity: 0.55;
+  transition: opacity var(--dur);
+}
+
+.muted {
+  color: var(--ink-secondary);
+}
+.dim {
+  color: var(--ink-muted);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.nums {
+  font-variant-numeric: tabular-nums;
+}
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s1) var(--s3);
+  font-size: var(--text-base);
+}
+.kv dt {
+  color: var(--ink-secondary);
+}
+.kv dd {
+  color: var(--ink-primary);
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chip-row {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.list-reset {
+  list-style: none;
+  padding: 0;
+}
+.divided > li {
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.divided > li:last-child {
+  border-bottom: none;
+}
+
+.raw-json {
+  margin-top: var(--s2);
+  padding: var(--s3);
+  max-height: 300px;
+  overflow: auto;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  color: var(--ink-secondary);
+}
+
+/* --- toast ------------------------------------------------------------- */
+.toasts {
+  position: fixed;
+  bottom: var(--s4);
+  right: var(--s4);
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  max-width: min(360px, calc(100vw - var(--s8)));
+}
+.toast {
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  background: var(--ink-primary);
+  color: var(--surface-1);
+  font-size: var(--text-base);
+  box-shadow: var(--shadow-2);
+  animation: toast-in 0.18s ease;
+}
+.toast-error {
+  background: var(--status-critical);
+  color: #fff;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

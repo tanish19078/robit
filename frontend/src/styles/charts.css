@@ -1,0 +1,304 @@
+/* ===========================================================================
+   Chart chrome: surface, legend, tooltip, table-view twin.
+
+   Rules this file enforces visually:
+     - gridlines and axes are solid hairlines one shade off the surface
+       (dashing is reserved for genuine thresholds, where it means something)
+     - text wears ink tokens, never a series color
+     - every chart has a table-view twin, so no value is reachable only by hover
+   =========================================================================== */
+
+.chart {
+  position: relative;
+}
+
+.chart-surface {
+  width: 100%;
+  display: block;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+.chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+}
+
+.chart-caption {
+  margin-top: var(--s2);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+/* --- legend ------------------------------------------------------------ */
+/* Present whenever two or more classes are on screen, so identity is never
+   carried by color alone. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  margin-top: var(--s2);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+.legend-swatch-line {
+  width: 16px;
+  height: 0;
+  border-top-width: 2px;
+  border-top-style: solid;
+  border-radius: 0;
+}
+.legend-swatch-dashed {
+  border-top-style: dashed;
+}
+
+/* --- tooltip ----------------------------------------------------------- */
+/* A real positioned element rather than SVG <title>: native tooltips are slow
+   to appear, unstyleable, and never show on keyboard focus. */
+.chart-tip {
+  position: absolute;
+  z-index: 20;
+  min-width: 140px;
+  max-width: 260px;
+  padding: var(--s2) var(--s3);
+  background: var(--surface-1);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-sm);
+  color: var(--ink-primary);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+}
+.chart-tip-title {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.chart-tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  color: var(--ink-secondary);
+}
+.chart-tip-row strong {
+  color: var(--ink-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hit targets are generously sized and invisible, so a thin bar or an 8px
+   node does not demand pixel-accurate aiming. */
+.chart-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.chart-hit:focus-visible {
+  outline: none;
+}
+.chart-focus-ring {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+
+/* --- table-view twin --------------------------------------------------- */
+.chart-table {
+  margin-top: var(--s3);
+}
+.chart-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.chart-table th,
+.chart-table td {
+  padding: var(--s1) var(--s2);
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.chart-table th {
+  color: var(--ink-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+}
+.chart-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- ranked list (cell likelihoods) ------------------------------------ */
+.ranked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.ranked-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s1) var(--s3);
+  align-items: baseline;
+}
+.ranked-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.ranked-lead .ranked-label {
+  font-weight: 700;
+}
+.ranked-meta {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ranked-bar {
+  grid-column: 1 / -1;
+}
+.ranked-tag {
+  display: inline-block;
+  margin-left: var(--s2);
+  padding: 0 var(--s2);
+  border-radius: var(--r-sm);
+  background: var(--brand-wash);
+  color: var(--brand);
+  font-family: var(--font);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* --- threshold scale (S against its cuts) ------------------------------ */
+.scale {
+  position: relative;
+  height: 28px;
+  margin: var(--s5) 0 var(--s3);
+  background: var(--seq-track);
+  border-radius: var(--r-md);
+}
+.scale-cut {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 2px;
+  background: var(--line-strong);
+}
+.scale-cut-label {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+  white-space: nowrap;
+}
+.scale-needle {
+  position: absolute;
+  top: -8px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 11px solid var(--ink-primary);
+  transform: translateX(-7px);
+}
+.scale-value {
+  position: absolute;
+  top: 100%;
+  margin-top: var(--s1);
+  transform: translateX(-50%);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --- rule trace -------------------------------------------------------- */
+.trace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  list-style: none;
+  padding: 0;
+}
+.trace li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: var(--s2);
+  align-items: start;
+  font-size: var(--text-md);
+  line-height: 1.55;
+}
+.trace-mark {
+  margin-top: 3px;
+}
+.trace-pass {
+  color: var(--status-good);
+}
+.trace-fail {
+  color: var(--status-critical);
+}
+.trace-warn {
+  color: var(--status-warning);
+}
+.trace-verdict {
+  margin-top: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+  font-size: var(--text-md);
+}
+
+/* --- map --------------------------------------------------------------- */
+.map {
+  height: 380px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.map .leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: var(--surface-2);
+  font-family: var(--font);
+}
+@media (max-width: 760px) {
+  .map {
+    height: 300px;
+  }
+}
+
+/* --- live feed --------------------------------------------------------- */
+.feed {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 170px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+}
+.feed li {
+  padding: 3px 0;
+  overflow-wrap: anywhere;
+}
+.feed-new {
+  color: var(--ink-primary);
+}

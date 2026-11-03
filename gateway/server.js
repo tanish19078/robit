@@ -200,6 +200,7 @@ async function forecastFor(inc, { force = false } = {}) {
     (Date.parse(events[events.length - 1].ts) - Date.parse(inc.t0)) / 60000);
   const alert = {
     alert_id: `AL-${db.seq++}`, incident_id: inc.incident_id, risk_tier,
+    victim_lat: inc.victim_lat, victim_lon: inc.victim_lon,
     money_path: f.money_path, suspected_nodes: f.suspected_nodes,
     probable_cashout_cells: f.probable_cashout_cells,
     cashout_window_minutes: f.cashout_window_minutes,

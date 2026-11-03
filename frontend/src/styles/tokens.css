@@ -35,22 +35,35 @@
   --ink-muted: #898781;
   --ink-inverse: #ffffff;
 
+  /* Compatibility aliases for the two existing explanatory pages. */
+  --muted: var(--ink-secondary);
+  --txt: var(--ink-primary);
+  --panel: var(--surface-1);
+  --panel2: var(--surface-2);
+  --bg: var(--surface-page);
+  --acc: var(--brand);
+  --acc-dark: var(--brand);
+  --red: var(--status-critical);
+  --amber: var(--status-warning);
+  --green: var(--status-good);
+  --purple: var(--status-critical);
+
   --line: rgba(11, 11, 11, 0.1);
   --line-strong: #c3c2b7;
   --gridline: #e1e0d9;
 
   /* --- brand (chrome only: nav, links, primary action) ------------------- */
-  --brand: #047857;           /* 5.34:1 on --surface-1 */
+  --brand: #047857; /* 5.34:1 on --surface-1 */
   --brand-hover: #065f46;
   --brand-wash: #ecfdf5;
-  --brand-on: #ffffff;        /* 5.48:1 on --brand */
+  --brand-on: #ffffff; /* 5.48:1 on --brand */
 
   /* --- risk tiers = the fixed status scale ------------------------------- */
   /* Always paired with an icon + text label. On light, warning and serious
      are below 3:1 by design — the pairing is the mitigation, never hue alone. */
-  --status-good: #0ca30c;     /* Green    */
-  --status-warning: #fab219;  /* Amber    */
-  --status-serious: #ec835a;  /* Red      */
+  --status-good: #0ca30c; /* Green    */
+  --status-warning: #fab219; /* Amber    */
+  --status-serious: #ec835a; /* Red      */
   --status-critical: #d03b3b; /* Critical */
 
   --status-good-wash: #eafaea;
@@ -59,9 +72,9 @@
   --status-critical-wash: #fbebeb;
 
   /* --- categorical series (money-graph edge types) ----------------------- */
-  --series-1: #2a78d6;        /* transfer         */
-  --series-2: #eb6834;        /* withdrawal       */
-  --series-3: #1baf7a;        /* shared attribute */
+  --series-1: #2a78d6; /* transfer         */
+  --series-2: #eb6834; /* withdrawal       */
+  --series-3: #1baf7a; /* shared attribute */
 
   /* --- sequential ramp (magnitude) --------------------------------------- */
   --seq-100: #cde2fb;
@@ -71,7 +84,7 @@
   --seq-550: #1c5cab;
   --seq-700: #0d366b;
   --seq-track: #e8e7e3;
-  --seq-deemphasis: #c3c2b7;  /* the "rest" in an emphasis chart */
+  --seq-deemphasis: #c3c2b7; /* the "rest" in an emphasis chart */
 
   /* --- type ------------------------------------------------------------- */
   --font: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -131,10 +144,10 @@
     --line-strong: #383835;
     --gridline: #2c2c2a;
 
-    --brand: #10b981;         /* 6.87:1 on dark --surface-1 */
+    --brand: #10b981; /* 6.87:1 on dark --surface-1 */
     --brand-hover: #34d399;
     --brand-wash: #12241d;
-    --brand-on: #0d0d0d;      /* 7.66:1 on --brand */
+    --brand-on: #0d0d0d; /* 7.66:1 on --brand */
 
     --status-good-wash: #112111;
     --status-warning-wash: #2a2008;

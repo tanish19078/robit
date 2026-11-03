@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { Button } from "./primitives";
+import { useCallback, useState } from 'react';
+import { Button } from './primitives';
 
 /**
  * Chart chrome: title, legend, a table-view twin and a tooltip host.
@@ -9,15 +9,7 @@ import { Button } from "./primitives";
  * must never be the only way to read a value. Every chart wrapped here can be
  * read as numbers instead.
  */
-export default function ChartFrame({
-  title,
-  note,
-  legend,
-  table,
-  caption,
-  children,
-  tip,
-}) {
+export default function ChartFrame({ title, note, legend, table, caption, children, tip }) {
   const [showTable, setShowTable] = useState(false);
 
   return (
@@ -34,7 +26,7 @@ export default function ChartFrame({
             pressed={showTable}
             onClick={() => setShowTable((v) => !v)}
           >
-            {showTable ? "Chart" : "Table"}
+            {showTable ? 'Chart' : 'Table'}
           </Button>
         )}
       </div>
@@ -64,12 +56,12 @@ export default function ChartFrame({
             <li className="legend-item" key={l.label}>
               <span
                 className={[
-                  "legend-swatch",
-                  l.line ? "legend-swatch-line" : "",
-                  l.dashed ? "legend-swatch-dashed" : "",
+                  'legend-swatch',
+                  l.line ? 'legend-swatch-line' : '',
+                  l.dashed ? 'legend-swatch-dashed' : '',
                 ]
                   .filter(Boolean)
-                  .join(" ")}
+                  .join(' ')}
                 style={l.line ? { borderTopColor: l.color } : { background: l.color }}
                 aria-hidden="true"
               />

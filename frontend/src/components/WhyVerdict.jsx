@@ -1,81 +1,79 @@
 export default function WhyVerdict({ alert }) {
   if (!alert) return null;
-  const t = alert.tier_detail || {};
+  const detail = alert.tier_detail || {};
   const tier = alert.risk_tier;
-
-  const mark = (ok) => ok
-    ? <span className="check-ok">✓</span>
-    : <span className="check-fail">✗</span>;
-
-  const rows = [];
-
-  // Excitation check
-  rows.push(
-    <li key="exc">
-      {mark((t.intensity ?? 0) > (t.red_cut ?? 2))}{" "}
-      Burst excitation <strong>S = {t.intensity ?? "?"}</strong>{" "}
-      vs Red cut {t.red_cut ?? "?"} / Amber {t.amber_cut ?? "?"}
-    </li>
+  const mark = (ok) => (
+    <span className={`trace-mark ${ok ? 'trace-pass' : 'trace-fail'}`} aria-hidden="true">
+      {ok ? '✓' : '×'}
+    </span>
   );
-
-  // Critical vs peer check
-  if (tier === "Critical") {
-    rows.push(
-      <li key="crit">
-        <span className="check-warn">!</span>{" "}
-        Live withdrawal on record — tier forced to Critical
-      </li>
-    );
-  } else {
-    rows.push(
-      <li key="peer">
-        {mark((t.max_mule_final ?? 0) >= 0.5)}{" "}
-        Top peer suspicion <strong>{t.max_mule_final ?? "?"}</strong>{" "}
-        (≥ 0.5 needed to hold Red)
-      </li>
-    );
-  }
-
-  // Fusion cap
-  if (t.capped_from) {
+  const rows = [
+    <li key="excitation">
+      {mark((detail.intensity ?? 0) >= (detail.red_cut ?? 2))}
+      <span>
+        Burst excitation is <strong>S = {detail.intensity ?? '—'}</strong>. Amber begins at{' '}
+        {detail.amber_cut ?? '—'}; Red begins at {detail.red_cut ?? '—'}.
+      </span>
+    </li>,
+    <li key="peer">
+      {mark(tier === 'Critical' || (detail.max_mule_final ?? 0) >= 0.5)}
+      <span>
+        {tier === 'Critical'
+          ? 'A withdrawal event is recorded, which elevates the case to Critical.'
+          : `Top account suspicion is ${detail.max_mule_final ?? '—'}; a score of 0.5 is needed to retain Red.`}
+      </span>
+    </li>,
+  ];
+  if (detail.capped_from)
     rows.push(
       <li key="cap">
-        <span className="check-warn">!</span>{" "}
-        Stepped down from {t.capped_from} — hot burst but cool peer (false-positive brake)
-      </li>
+        <span className="trace-mark trace-warn" aria-hidden="true">
+          !
+        </span>
+        <span>
+          The tier stepped down from {detail.capped_from}: the burst was high but the strongest
+          account score was below the fusion threshold.
+        </span>
+      </li>,
     );
-  }
-
-  // Verdict sentence
   const verdicts = {
-    Green: "Keep watching — nothing here clears the bar.",
-    Amber: "Worth an analyst's eyes, not a bank alert yet.",
-    Red: `Act now: intervene at cell ${alert.probable_cashout_cells?.[0]?.h3_cell || "—"}.`,
-    Critical: "Money is moving out — escalate immediately.",
+    Green: 'Continue monitoring; the current signals remain below escalation thresholds.',
+    Amber: 'Analyst review is recommended before escalating to a bank response.',
+    Red: `Prioritize review of predicted cell ${alert.probable_cashout_cells?.[0]?.h3_cell || '—'}.`,
+    Critical: 'Review the recorded withdrawal event and escalate through established procedures.',
   };
-  rows.push(
-    <li key="verdict" style={{ marginTop: 8 }}>
-      → <strong>{verdicts[tier] || "—"}</strong>
-    </li>
-  );
-
-  // Scale bar
-  const xmax = Math.max(t.intensity || 0, t.red_cut || 2) * 1.15 || 1;
-  const pct = (v) => Math.min(100, (v / xmax) * 100);
-
+  const max = Math.max(detail.intensity || 0, detail.red_cut || 2, 1) * 1.15;
+  const pos = (value) => `${Math.min(100, Math.max(0, (value / max) * 100))}%`;
   return (
     <div>
-      <ul className="why-list">{rows}</ul>
-      <div className="scale-bar">
-        <div className="scale-cut" style={{ left: `${pct(t.amber_cut || 0)}%` }}>
-          <span>amber {t.amber_cut}</span>
-        </div>
-        <div className="scale-cut" style={{ left: `${pct(t.red_cut || 0)}%` }}>
-          <span>red {t.red_cut}</span>
-        </div>
-        <div className="scale-needle" style={{ left: `${pct(t.intensity || 0)}%` }}
-          title={`S=${t.intensity}`} />
+      <ul className="trace">{rows}</ul>
+      <p className="trace-verdict">{verdicts[tier] || 'Review the case details.'}</p>
+      <div
+        className="scale"
+        role="img"
+        aria-label={`Excitation score ${detail.intensity ?? 0}. Amber threshold ${detail.amber_cut ?? 0}, red threshold ${detail.red_cut ?? 0}`}
+      >
+        <span
+          className="scale-cut"
+          style={{
+            left: pos(detail.amber_cut || 0),
+            background: 'var(--status-warning)',
+          }}
+        >
+          <span className="scale-cut-label">Amber {detail.amber_cut}</span>
+        </span>
+        <span
+          className="scale-cut"
+          style={{
+            left: pos(detail.red_cut || 0),
+            background: 'var(--status-serious)',
+          }}
+        >
+          <span className="scale-cut-label">Red {detail.red_cut}</span>
+        </span>
+        <span className="scale-needle" style={{ left: pos(detail.intensity || 0) }} />
       </div>
+      <div className="scale-value">Current S = {detail.intensity ?? '—'}</div>
     </div>
   );
 }

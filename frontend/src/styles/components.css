@@ -56,7 +56,10 @@
   font-size: var(--text-base);
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--dur), border-color var(--dur), color var(--dur);
+  transition:
+    background var(--dur),
+    border-color var(--dur),
+    color var(--dur);
   white-space: nowrap;
 }
 .btn:hover {
@@ -166,11 +169,20 @@
 
 /* Amber/serious text on a light wash needs darker ink to stay readable at
    small sizes; the badge keeps the status hue on its border and glyph. */
-:root:not([data-theme="dark"]) .tier-amber {
+:root[data-theme="light"] .tier-amber {
   color: #8a5a00;
 }
-:root:not([data-theme="dark"]) .tier-red {
+:root[data-theme="light"] .tier-red {
   color: #9c4418;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:where(:not([data-theme="dark"])) .tier-amber {
+    color: #8a5a00;
+  }
+  :root:where(:not([data-theme="dark"])) .tier-red {
+    color: #9c4418;
+  }
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) .tier-amber {
@@ -316,7 +328,12 @@
 
 .skeleton {
   border-radius: var(--r-md);
-  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-sunken) 37%, var(--surface-2) 63%);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--surface-sunken) 37%,
+    var(--surface-2) 63%
+  );
   background-size: 400% 100%;
   animation: skeleton 1.2s ease-in-out infinite;
 }

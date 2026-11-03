@@ -50,6 +50,15 @@ To develop with instant Vite hot-module replacement:
 cd frontend && npm run dev    # Vite dev server on :5173, proxies /api to :3000
 ```
 
+Frontend quality checks (run from `frontend/`):
+```bash
+npm run lint          # Biome static checks
+npm run format        # Apply the Biome formatter
+npm run format:check  # Verify formatting
+npm test              # Component tests
+npm run build         # Production bundle
+```
+
 ---
 
 ## Complete Feature Matrix

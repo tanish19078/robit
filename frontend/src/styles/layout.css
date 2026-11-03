@@ -48,7 +48,9 @@
   font-size: var(--text-base);
   font-weight: 500;
   color: var(--ink-secondary);
-  transition: background var(--dur), color var(--dur);
+  transition:
+    background var(--dur),
+    color var(--dur);
   white-space: nowrap;
 }
 .nav-link:hover {
@@ -126,12 +128,18 @@
   gap: var(--s3);
 }
 .grid-2 {
+  display: grid;
+  gap: var(--s3);
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .grid-3 {
+  display: grid;
+  gap: var(--s3);
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .grid-4 {
+  display: grid;
+  gap: var(--s3);
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .stack {

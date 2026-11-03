@@ -78,15 +78,31 @@ svg {
   border: 0;
 }
 
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: var(--s2);
+  left: var(--s2);
+  padding: var(--s2) var(--s3);
+  transform: translateY(-160%);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  color: var(--brand);
+  box-shadow: var(--shadow-2);
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* Honour the OS reduced-motion setting rather than animating regardless. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  html:root *,
+  html:root *::before,
+  html:root *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
   }
 }
 

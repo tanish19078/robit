@@ -1,6 +1,6 @@
 /** Shared API helpers. All calls go through the same origin (gateway). */
 
-const BASE = "";
+const BASE = '';
 
 export async function get(path) {
   const r = await fetch(BASE + path);
@@ -10,12 +10,12 @@ export async function get(path) {
 
 export async function post(path, body) {
   const r = await fetch(BASE + path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
   if (!r.ok) {
-    const txt = await r.text().catch(() => "");
+    const txt = await r.text().catch(() => '');
     throw new Error(`POST ${path} → ${r.status} ${txt}`);
   }
   return r.json();
@@ -24,7 +24,11 @@ export async function post(path, body) {
 export function sseConnect(incidentId, onMessage) {
   const es = new EventSource(`${BASE}/api/stream/${incidentId}`);
   es.onmessage = (m) => {
-    try { onMessage(JSON.parse(m.data)); } catch { /* skip bad frames */ }
+    try {
+      onMessage(JSON.parse(m.data));
+    } catch {
+      /* skip bad frames */
+    }
   };
   return es;
 }

@@ -45,17 +45,53 @@ export default function Architecture() {
         <div className="card-title">Technology Stack</div>
         <table className="table arch-table">
           <thead>
-            <tr><th>Layer</th><th>Technology</th><th>Role</th></tr>
+            <tr>
+              <th>Layer</th>
+              <th>Technology</th>
+              <th>Role</th>
+            </tr>
           </thead>
           <tbody>
-            <tr><td>Data Streaming</td><td>Apache Kafka / Redis Streams</td><td>Event ingestion and processing</td></tr>
-            <tr><td>Graph ML</td><td>PyTorch Geometric (roadmap), IsolationForest (current)</td><td>Mule detection and node embedding</td></tr>
-            <tr><td>Forecasting</td><td>Hawkes-lite (current), GAttNHP (roadmap)</td><td>Spatial-temporal cash-out prediction</td></tr>
-            <tr><td>Backend API</td><td>Python FastAPI + Node.js Express</td><td>ML inference + API gateway</td></tr>
-            <tr><td>Frontend</td><td>React + Leaflet + Vite</td><td>GIS dashboard and alert management</td></tr>
-            <tr><td>Database</td><td>JSON file store (current), PostgreSQL (roadmap)</td><td>Incident, audit, and terminal storage</td></tr>
-            <tr><td>Spatial Index</td><td>Uber H3 Resolution 8/9</td><td>Hexagonal cell assignment (~200–530m areas)</td></tr>
-            <tr><td>Privacy</td><td>FedAvg head-only (current), full DP+SMPC (roadmap)</td><td>Cross-bank collaboration</td></tr>
+            <tr>
+              <td>Data Streaming</td>
+              <td>Apache Kafka / Redis Streams</td>
+              <td>Event ingestion and processing</td>
+            </tr>
+            <tr>
+              <td>Graph ML</td>
+              <td>PyTorch Geometric (roadmap), IsolationForest (current)</td>
+              <td>Mule detection and node embedding</td>
+            </tr>
+            <tr>
+              <td>Forecasting</td>
+              <td>Hawkes-lite (current), GAttNHP (roadmap)</td>
+              <td>Spatial-temporal cash-out prediction</td>
+            </tr>
+            <tr>
+              <td>Backend API</td>
+              <td>Python FastAPI + Node.js Express</td>
+              <td>ML inference + API gateway</td>
+            </tr>
+            <tr>
+              <td>Frontend</td>
+              <td>React + Leaflet + Vite</td>
+              <td>GIS dashboard and alert management</td>
+            </tr>
+            <tr>
+              <td>Database</td>
+              <td>JSON file store (current), PostgreSQL (roadmap)</td>
+              <td>Incident, audit, and terminal storage</td>
+            </tr>
+            <tr>
+              <td>Spatial Index</td>
+              <td>Uber H3 Resolution 8/9</td>
+              <td>Hexagonal cell assignment (~200–530m areas)</td>
+            </tr>
+            <tr>
+              <td>Privacy</td>
+              <td>FedAvg head-only (current), full DP+SMPC (roadmap)</td>
+              <td>Cross-bank collaboration</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -64,31 +100,42 @@ export default function Architecture() {
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-title">Four-Module Pipeline</div>
 
-        <h3 style={{ fontSize: 15, marginTop: 16, marginBottom: 8 }}>Module 2 — Graph Construction</h3>
-        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
-          k-hop BFS traversal from the complaint root. Follows transfer, withdrawal, and shared-attribute edges up to depth 3.
-          A greedy max-amount path tracer finds the primary cash-out trail from victim to frontier.
+        <h3 style={{ fontSize: 15, marginTop: 16, marginBottom: 8 }}>
+          Module 2 — Graph Construction
+        </h3>
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
+          k-hop BFS traversal from the complaint root. Follows transfer, withdrawal, and
+          shared-attribute edges up to depth 3. A greedy max-amount path tracer finds the primary
+          cash-out trail from victim to frontier.
         </p>
-        <pre className="code-block">build_khop(events, roots=[victim_hash], depth=3) → nodes, edges, path</pre>
+        <pre className="code-block">
+          build_khop(events, roots=[victim_hash], depth=3) → nodes, edges, path
+        </pre>
 
         <h3 style={{ fontSize: 15, marginTop: 24, marginBottom: 8 }}>Module 3 — Mule Detection</h3>
-        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
-          6 hand-crafted features (fan_out_vel, fan_in_vel, is_new, hop_depth, split_ratio, terminal_conv)
-          plus IsolationForest peer ranking. Victims excluded by construction.
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
+          6 hand-crafted features (fan_out_vel, fan_in_vel, is_new, hop_depth, split_ratio,
+          terminal_conv) plus IsolationForest peer ranking. Victims excluded by construction.
         </p>
         <pre className="code-block">final = σ(3.0 × baseline + 2.0 × learned − 1.5)</pre>
 
-        <h3 style={{ fontSize: 15, marginTop: 24, marginBottom: 8 }}>Module 4a — Hawkes Excitation</h3>
-        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
-          Burst-weighted temporal excitation. Each transfer contributes based on recency decay and how many other transfers
-          occurred within ±5 minutes (burst peers). The score S is map-independent.
+        <h3 style={{ fontSize: 15, marginTop: 24, marginBottom: 8 }}>
+          Module 4a — Hawkes Excitation
+        </h3>
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
+          Burst-weighted temporal excitation. Each transfer contributes based on recency decay and
+          how many other transfers occurred within ±5 minutes (burst peers). The score S is
+          map-independent.
         </p>
         <pre className="code-block">{`S = Σ(amount_norm × e^(−β·Δt) × (1 + burst_peers))
 risk(cell) = base_prior + S × proximity × density`}</pre>
 
-        <h3 style={{ fontSize: 15, marginTop: 24, marginBottom: 8 }}>Module 4b — Quantile Window</h3>
-        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
-          Deterministic non-crossing quantiles. Higher excitation contracts the window — more urgent = sooner expected cash-out.
+        <h3 style={{ fontSize: 15, marginTop: 24, marginBottom: 8 }}>
+          Module 4b — Quantile Window
+        </h3>
+        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
+          Deterministic non-crossing quantiles. Higher excitation contracts the window — more urgent
+          = sooner expected cash-out.
         </p>
         <pre className="code-block">{`median = clamp(30 − 2·S − (frontier−1), [5, 120])
 q10 = 0.55 × median,  q90 = 1.65 × median
@@ -100,19 +147,52 @@ assert q10 ≤ median ≤ q90`}</pre>
         <div className="card-title">System Architecture & Enterprise Scale-Out</div>
         <table className="table">
           <thead>
-            <tr><th>PRAHARI Core System</th><th>Enterprise Scale-Out Target</th></tr>
+            <tr>
+              <th>PRAHARI Core System</th>
+              <th>Enterprise Scale-Out Target</th>
+            </tr>
           </thead>
           <tbody>
-            <tr><td>Stdlib graph BFS (sub-100ms)</td><td>PyTorch Geometric / TGN temporal graph</td></tr>
-            <tr><td>IsolationForest mule ranker</td><td>GCPAL contrastive pre-training + GNN</td></tr>
-            <tr><td>Burst-weighted Hawkes excitation S(t)</td><td>Full GAttNHP neural Hawkes with attention</td></tr>
-            <tr><td>Deterministic quantile window (q10/med/q90)</td><td>Learned NCQ regression head</td></tr>
-            <tr><td>File-backed JSON store with O(1) index</td><td>PostgreSQL + PostGIS cluster</td></tr>
-            <tr><td>Server-Sent Events (SSE) stream</td><td>Kafka / WebSocket event distribution</td></tr>
-            <tr><td>React + Leaflet GIS console</td><td>Deck.gl + advanced GIS rendering</td></tr>
-            <tr><td>Privacy-preserving FedAvg (cosine 1.0)</td><td>Full encoder federation with DP + secure aggregation</td></tr>
-            <tr><td>265 OSM ATMs (Central Delhi)</td><td>National terminal registry</td></tr>
-            <tr><td>12 validated scenario fixtures</td><td>AMLSim / real anonymized data feeds</td></tr>
+            <tr>
+              <td>Stdlib graph BFS (sub-100ms)</td>
+              <td>PyTorch Geometric / TGN temporal graph</td>
+            </tr>
+            <tr>
+              <td>IsolationForest mule ranker</td>
+              <td>GCPAL contrastive pre-training + GNN</td>
+            </tr>
+            <tr>
+              <td>Burst-weighted Hawkes excitation S(t)</td>
+              <td>Full GAttNHP neural Hawkes with attention</td>
+            </tr>
+            <tr>
+              <td>Deterministic quantile window (q10/med/q90)</td>
+              <td>Learned NCQ regression head</td>
+            </tr>
+            <tr>
+              <td>File-backed JSON store with O(1) index</td>
+              <td>PostgreSQL + PostGIS cluster</td>
+            </tr>
+            <tr>
+              <td>Server-Sent Events (SSE) stream</td>
+              <td>Kafka / WebSocket event distribution</td>
+            </tr>
+            <tr>
+              <td>React + Leaflet GIS console</td>
+              <td>Deck.gl + advanced GIS rendering</td>
+            </tr>
+            <tr>
+              <td>Privacy-preserving FedAvg (cosine 1.0)</td>
+              <td>Full encoder federation with DP + secure aggregation</td>
+            </tr>
+            <tr>
+              <td>265 OSM ATMs (Central Delhi)</td>
+              <td>National terminal registry</td>
+            </tr>
+            <tr>
+              <td>12 validated scenario fixtures</td>
+              <td>AMLSim / real anonymized data feeds</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -121,12 +201,30 @@ assert q10 ≤ median ≤ q90`}</pre>
       <div className="card">
         <div className="card-title">Safeguards</div>
         <ul className="evidence-list" style={{ fontSize: 14 }}>
-          <li><span className="check-ok">✓</span> All account identifiers are cryptographically hashed — no PII in the pipeline</li>
-          <li><span className="check-ok">✓</span> Every output is tagged <strong>SIMULATION</strong> — no live banking rail connected</li>
-          <li><span className="check-ok">✓</span> Human approval required — no autonomous freeze or lien action</li>
-          <li><span className="check-ok">✓</span> Financial actions are simulated and audited — step_up, hold_request, patrol_notify</li>
-          <li><span className="check-ok">✓</span> Every alert carries model version, evidence payload, and immutable audit trail</li>
-          <li><span className="check-ok">✓</span> Federated learning shares only aggregated statistics — raw_tables_shared = false</li>
+          <li>
+            <span className="check-ok">✓</span> All account identifiers are cryptographically hashed
+            — no PII in the pipeline
+          </li>
+          <li>
+            <span className="check-ok">✓</span> Every output is tagged <strong>SIMULATION</strong> —
+            no live banking rail connected
+          </li>
+          <li>
+            <span className="check-ok">✓</span> Human approval required — no autonomous freeze or
+            lien action
+          </li>
+          <li>
+            <span className="check-ok">✓</span> Financial actions are simulated and audited —
+            step_up, hold_request, patrol_notify
+          </li>
+          <li>
+            <span className="check-ok">✓</span> Every alert carries model version, evidence payload,
+            and immutable audit trail
+          </li>
+          <li>
+            <span className="check-ok">✓</span> Federated learning shares only aggregated statistics
+            — raw_tables_shared = false
+          </li>
         </ul>
       </div>
     </div>

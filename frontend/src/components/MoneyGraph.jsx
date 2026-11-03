@@ -1,10 +1,10 @@
-import { useRef, useEffect } from "react";
-import { shortId, inr, hhmm } from "../utils";
+import { useRef, useEffect } from 'react';
+import { shortId, inr, hhmm } from '../utils';
 
 function riskHex(val) {
-  if (val > 0.65) return "#dc2626";
-  if (val >= 0.35) return "#d97706";
-  return "#059669";
+  if (val > 0.65) return 'var(--status-critical)';
+  if (val >= 0.35) return 'var(--status-warning)';
+  return 'var(--status-good)';
 }
 
 export default function MoneyGraph({ graph, muleScores = {} }) {
@@ -13,17 +13,25 @@ export default function MoneyGraph({ graph, muleScores = {} }) {
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
-    if (!graph?.nodes?.length) { svg.replaceChildren(); return; }
+    if (!graph?.nodes?.length) {
+      svg.replaceChildren();
+      return;
+    }
 
     const W = svg.clientWidth || 540;
     const H = 260;
-    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-    svg.innerHTML = "";
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.innerHTML = '';
 
-    const NS = "http://www.w3.org/2000/svg";
+    const NS = 'http://www.w3.org/2000/svg';
     const byHop = {};
-    for (const n of graph.nodes) (byHop[n.hop] = byHop[n.hop] || []).push(n);
-    const hops = Object.keys(byHop).map(Number).sort((a, b) => a - b);
+    for (const n of graph.nodes) {
+      if (!byHop[n.hop]) byHop[n.hop] = [];
+      byHop[n.hop].push(n);
+    }
+    const hops = Object.keys(byHop)
+      .map(Number)
+      .sort((a, b) => a - b);
 
     const pos = {};
     hops.forEach((h, ci) => {
@@ -36,44 +44,69 @@ export default function MoneyGraph({ graph, muleScores = {} }) {
     });
 
     const mkText = (x, y, text, size, fill) => {
-      const t = document.createElementNS(NS, "text");
-      t.setAttribute("x", x); t.setAttribute("y", y);
-      t.setAttribute("text-anchor", "middle"); t.setAttribute("font-size", size);
-      t.setAttribute("fill", fill || "var(--ink-secondary)");
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', x);
+      t.setAttribute('y', y);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('font-size', size);
+      t.setAttribute('fill', fill || 'var(--ink-secondary)');
       t.textContent = text;
       svg.appendChild(t);
     };
 
     for (const e of graph.edges || []) {
       if (!pos[e.src] || !pos[e.dst]) continue;
-      const a = pos[e.src], b = pos[e.dst];
-      const l = document.createElementNS(NS, "line");
-      l.setAttribute("x1", a.x); l.setAttribute("y1", a.y);
-      l.setAttribute("x2", b.x); l.setAttribute("y2", b.y);
-      l.setAttribute("stroke",
-        e.type === "withdrawal" ? "var(--series-2)" :
-        e.type === "shared_attribute" ? "var(--series-3)" : "var(--series-1)"
+      const a = pos[e.src],
+        b = pos[e.dst];
+      const l = document.createElementNS(NS, 'line');
+      l.setAttribute('x1', a.x);
+      l.setAttribute('y1', a.y);
+      l.setAttribute('x2', b.x);
+      l.setAttribute('y2', b.y);
+      l.setAttribute(
+        'stroke',
+        e.type === 'withdrawal'
+          ? 'var(--series-2)'
+          : e.type === 'shared_attribute'
+            ? 'var(--series-3)'
+            : 'var(--series-1)',
       );
-      l.setAttribute("stroke-width", "2");
-      if (e.type === "shared_attribute") l.setAttribute("stroke-dasharray", "5,4");
+      l.setAttribute('stroke-width', '2');
+      if (e.type === 'shared_attribute') l.setAttribute('stroke-dasharray', '5,4');
       svg.appendChild(l);
-      if (e.type !== "shared_attribute") {
-        mkText((a.x + b.x) / 2, (a.y + b.y) / 2 - 8,
-          `${inr(e.amount)} · ${hhmm(e.ts)}`, "9.5", "var(--ink-secondary)");
+      if (e.type !== 'shared_attribute') {
+        mkText(
+          (a.x + b.x) / 2,
+          (a.y + b.y) / 2 - 8,
+          `${inr(e.amount)} · ${hhmm(e.ts)}`,
+          '9.5',
+          'var(--ink-secondary)',
+        );
       }
     }
 
     for (const n of graph.nodes) {
       const p = pos[n.id];
       const score = muleScores[n.id] || 0;
-      const c = document.createElementNS(NS, "circle");
-      c.setAttribute("cx", p.x); c.setAttribute("cy", p.y); c.setAttribute("r", "18");
-      c.setAttribute("fill", riskHex(score)); c.setAttribute("opacity", "0.9");
+      const c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', p.x);
+      c.setAttribute('cy', p.y);
+      c.setAttribute('r', '18');
+      c.setAttribute('fill', riskHex(score));
+      c.setAttribute('opacity', '0.9');
       svg.appendChild(c);
-      mkText(p.x, p.y + 5, score.toFixed(2), "10", "#fff");
-      mkText(p.x, p.y + 38, shortId(n.id).slice(0, 14), "10", "#1a2e23");
+      mkText(p.x, p.y + 5, score.toFixed(2), '10', '#fff');
+      mkText(p.x, p.y + 38, shortId(n.id).slice(0, 14), '10', '#1a2e23');
     }
   }, [graph, muleScores]);
 
-  return <svg ref={svgRef} className="chart-surface money-graph" style={{ height: 260 }} role="img" aria-label="Money movement graph. Nodes are accounts; edges show transfers and linked attributes." />;
+  return (
+    <svg
+      ref={svgRef}
+      className="chart-surface money-graph"
+      style={{ height: 260 }}
+      role="img"
+      aria-label="Money movement graph. Nodes are accounts; edges show transfers and linked attributes."
+    />
+  );
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, createContext, useContext } from "react";
+import { useState, useCallback, createContext, useContext } from 'react';
 
 const ToastCtx = createContext(null);
 
@@ -12,9 +12,11 @@ export function ToastProvider({ children }) {
   return (
     <ToastCtx.Provider value={toast}>
       {children}
-      <div className="toast-container">
+      <div className="toasts" aria-live="polite" aria-atomic="false">
         {items.map((t) => (
-          <div key={t.id} className="toast">{t.msg}</div>
+          <div key={t.id} className="toast">
+            {t.msg}
+          </div>
         ))}
       </div>
     </ToastCtx.Provider>

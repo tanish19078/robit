@@ -12,7 +12,8 @@ export default function MoneyGraph({ graph, muleScores = {} }) {
 
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg || !graph?.nodes?.length) { svg.innerHTML = ""; return; }
+    if (!svg) return;
+    if (!graph?.nodes?.length) { svg.replaceChildren(); return; }
 
     const W = svg.clientWidth || 540;
     const H = 260;
@@ -38,7 +39,7 @@ export default function MoneyGraph({ graph, muleScores = {} }) {
       const t = document.createElementNS(NS, "text");
       t.setAttribute("x", x); t.setAttribute("y", y);
       t.setAttribute("text-anchor", "middle"); t.setAttribute("font-size", size);
-      t.setAttribute("fill", fill || "#c6cfdb");
+      t.setAttribute("fill", fill || "var(--ink-secondary)");
       t.textContent = text;
       svg.appendChild(t);
     };
@@ -50,15 +51,15 @@ export default function MoneyGraph({ graph, muleScores = {} }) {
       l.setAttribute("x1", a.x); l.setAttribute("y1", a.y);
       l.setAttribute("x2", b.x); l.setAttribute("y2", b.y);
       l.setAttribute("stroke",
-        e.type === "withdrawal" ? "#dc2626" :
-        e.type === "shared_attribute" ? "#94a3b8" : "#059669"
+        e.type === "withdrawal" ? "var(--series-2)" :
+        e.type === "shared_attribute" ? "var(--series-3)" : "var(--series-1)"
       );
       l.setAttribute("stroke-width", "2");
       if (e.type === "shared_attribute") l.setAttribute("stroke-dasharray", "5,4");
       svg.appendChild(l);
       if (e.type !== "shared_attribute") {
         mkText((a.x + b.x) / 2, (a.y + b.y) / 2 - 8,
-          `${inr(e.amount)} · ${hhmm(e.ts)}`, "9.5", "#5f7a6b");
+          `${inr(e.amount)} · ${hhmm(e.ts)}`, "9.5", "var(--ink-secondary)");
       }
     }
 
@@ -74,5 +75,5 @@ export default function MoneyGraph({ graph, muleScores = {} }) {
     }
   }, [graph, muleScores]);
 
-  return <svg ref={svgRef} className="svg-container" style={{ height: 260 }} />;
+  return <svg ref={svgRef} className="chart-surface money-graph" style={{ height: 260 }} role="img" aria-label="Money movement graph. Nodes are accounts; edges show transfers and linked attributes." />;
 }

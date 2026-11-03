@@ -64,7 +64,7 @@ npm run build         # Production bundle
 ## Complete Feature Matrix
 
 ### 1. Multi-Page GIS Investigation Console (React 19 + Vite)
-PRAHARI features a minimalist, high-contrast light-green UI designed for rapid situational awareness during high-stress financial fraud investigations:
+PRAHARI features a responsive investigation console with selectable system, light, and dark themes. Risk tiers pair color with distinct icons and text labels, and the layout prioritizes the analyst's decision, estimated cash-out window, and evidence:
 
 - **Landing Console (`/`)**:
   - **Live Operational Metrics**: Real-time cards displaying total tracked complaints, processed events, and sub-100ms pipeline latency.
@@ -77,11 +77,11 @@ PRAHARI features a minimalist, high-contrast light-green UI designed for rapid s
   - **Automated Polling**: Refreshes queue state every 5 seconds via non-blocking background requests.
 - **Deep Investigation Workspace (`/incidents/:id`)**:
   - **Sidebar Case File**: Persistent incident metadata, money-path breadcrumbs, and fast-scrolling anchor navigation.
-  - **Verdict Banner**: Visual priority badge with real-time q10 / median / q90 countdown window and auto-generated natural language incident brief.
+  - **Verdict Banner**: Accessible priority badge with the model's q10 / median / q90 estimated cash-out window and an incident brief.
   - **Explainable Rule Trace ("Why This Verdict")**: Step-by-step decision validation showing threshold cuts, excitation score needle gauge, and false-positive brake status.
   - **Interactive SVG Money Graph**: Directed acyclic graph laid out by hop distance from victim, color-coded by mule risk, with amounts, timestamps, and shared-device dashed links.
   - **Chronological Event Flow**: Granular event list distinguishing standard transfers, hardware associations, and cash withdrawals.
-  - **Leaflet OpenStreetMap Geospatial Console**: Central Delhi map highlighting the top-predicted H3 hexagonal cell in high-contrast red circles with ATM/POS terminal pins and interactive popups.
+  - **Leaflet OpenStreetMap Geospatial Console**: Map centered on the incident, drawing ranked H3 cell polygons with nearby terminal markers and interactive popups. Leaflet loads only on the investigation route.
   - **Excitation Breakdown Bar Chart**: Visualizes each individual transfer's exact contribution to the danger score S, companion burst peers, and threshold lines.
   - **Ranked H3 Cell Likelihoods**: Ranked list of candidate hexagonal cells with horizontal probability progress bars and physical terminal counts.
   - **Suspect Mule Ranking Table**: Complete dossier ranking accounts by hand-crafted baseline score, unsupervised Isolation Forest score, final sigmoid fusion, and human-readable evidence strings.
